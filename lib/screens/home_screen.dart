@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hitwardhini/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -519,11 +520,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   PreferredSizeWidget _buildAppBar(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
       title: Text(
-        ['Home', 'Explore', 'Saved', 'Interests'][_currentIndex],
+        [l10n.home, l10n.explore, l10n.saved, l10n.interests][_currentIndex],
         style: GoogleFonts.poppins(
           fontWeight: FontWeight.bold,
           color: isDark ? Colors.white : Colors.black87,
@@ -755,6 +757,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildBottomNav(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[900] : Colors.white,
@@ -767,11 +770,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         labelColor: primaryColor,
         unselectedLabelColor: Colors.grey,
         labelStyle: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
-        tabs: const [
-          Tab(icon: Icon(Icons.home_rounded), text: 'Home'),
-          Tab(icon: Icon(Icons.explore_rounded), text: 'Explore'),
-          Tab(icon: Icon(Icons.favorite_rounded), text: 'Saved'),
-          Tab(icon: Icon(Icons.mail_rounded), text: 'Interests'),
+        tabs: [
+          Tab(icon: const Icon(Icons.home_rounded), text: l10n.home),
+          Tab(icon: const Icon(Icons.explore_rounded), text: l10n.explore),
+          Tab(icon: const Icon(Icons.favorite_rounded), text: l10n.saved),
+          Tab(icon: const Icon(Icons.mail_rounded), text: l10n.interests),
         ],
       ),
     );
@@ -830,11 +833,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Filter Profiles',
+                          AppLocalizations.of(context)!.filterProfiles,
                           style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          'Refine by age range',
+                          AppLocalizations.of(context)!.refineByAge,
                           style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 13),
                         ),
                       ],
@@ -863,13 +866,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             Icon(Icons.cake_rounded, size: 18, color: primaryColor),
                             const SizedBox(width: 8),
                             Text(
-                              'Age Range',
+                              AppLocalizations.of(context)!.ageRange,
                               style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
                             ),
                           ],
                         ),
                         Text(
-                          '${tempAgeRange.start.round()} - ${tempAgeRange.end.round()} yrs',
+                          '${tempAgeRange.start.round()} - ${tempAgeRange.end.round()} ${AppLocalizations.of(context)!.years}',
                           style: GoogleFonts.poppins(
                             color: primaryColor,
                             fontWeight: FontWeight.bold,
@@ -913,7 +916,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         Navigator.pop(context);
                       },
                       icon: const Icon(Icons.refresh_rounded, size: 18),
-                      label: Text('Reset', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                      label: Text(AppLocalizations.of(context)!.reset, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.grey[700],
                         side: BorderSide(color: Colors.grey[300]!),
@@ -932,7 +935,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         Navigator.pop(context);
                       },
                       icon: const Icon(Icons.check_rounded, size: 18),
-                      label: Text('Apply Filter', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                      label: Text(AppLocalizations.of(context)!.applyFilter, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
@@ -1056,7 +1059,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             const SizedBox(height: 12),
             // Name and Age
             Text(
-              _myProfile?['full_name'] ?? 'User',
+              _myProfile?['full_name'] ?? AppLocalizations.of(context)!.user,
               style: GoogleFonts.inter(
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
@@ -1065,7 +1068,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             if (age > 0)
               Text(
-                '$age years old',
+                AppLocalizations.of(context)!.yearsOld(age),
                 style: GoogleFonts.inter(
                   color: Colors.grey[600],
                   fontSize: 16,
@@ -1081,22 +1084,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Basic Info Section
-                    _buildSectionHeader(isDark, 'Basic Information'),
+                    _buildSectionHeader(isDark, AppLocalizations.of(context)!.basicInformation),
                     const SizedBox(height: 12),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.person_outline, 'Gender', _myProfile?['gender'] ?? 'Not set'),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.height_rounded, 'Height', _myProfile?['height'] ?? 'Not set'),
+                    _buildProfileInfoRow(isDark, primaryColor, Icons.person_outline, AppLocalizations.of(context)!.gender, _myProfile?['gender'] ?? AppLocalizations.of(context)!.notSet),
+                    _buildProfileInfoRow(isDark, primaryColor, Icons.height_rounded, AppLocalizations.of(context)!.height, _myProfile?['height'] ?? AppLocalizations.of(context)!.notSet),
                     
                     // Location & Career Section
-                    _buildSectionHeader(isDark, 'Location & Career'),
+                    _buildSectionHeader(isDark, AppLocalizations.of(context)!.locationCareer),
                     const SizedBox(height: 12),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.location_on_outlined, 'City', _myProfile?['city'] ?? 'Not set'),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.work_outline, 'Occupation', _myProfile?['occupation'] ?? 'Not set'),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.school_outlined, 'Education', _myProfile?['education'] ?? 'Not set'),
+                    _buildProfileInfoRow(isDark, primaryColor, Icons.location_on_outlined, AppLocalizations.of(context)!.city, _myProfile?['city'] ?? AppLocalizations.of(context)!.notSet),
+                    _buildProfileInfoRow(isDark, primaryColor, Icons.work_outline, AppLocalizations.of(context)!.occupation, _myProfile?['occupation'] ?? AppLocalizations.of(context)!.notSet),
+                    _buildProfileInfoRow(isDark, primaryColor, Icons.school_outlined, AppLocalizations.of(context)!.education, _myProfile?['education'] ?? AppLocalizations.of(context)!.notSet),
                     
                     // Contact Section
-                    _buildSectionHeader(isDark, 'Contact'),
+                    _buildSectionHeader(isDark, AppLocalizations.of(context)!.contact),
                     const SizedBox(height: 12),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.phone_outlined, 'Phone', _myProfile?['phone_number'] ?? 'Not set'),
+                    _buildProfileInfoRow(isDark, primaryColor, Icons.phone_outlined, AppLocalizations.of(context)!.phone, _myProfile?['phone_number'] ?? AppLocalizations.of(context)!.notSet),
                     
                     // Edit Button
                     const SizedBox(height: 16),
@@ -1118,7 +1121,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: Text(
-                          'Edit Profile',
+                          AppLocalizations.of(context)!.editProfile,
                           style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -1186,9 +1189,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildHomeTab(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     final age = _calculateAge(_myProfile?['date_of_birth']);
     final pendingCount = _receivedInterests.where((i) => i['status'] == 'pending').length;
-    final firstName = _myProfile?['full_name']?.split(' ').first ?? 'User';
+    final firstName = _myProfile?['full_name']?.split(' ').first ?? l10n.user;
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -1247,7 +1251,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           Row(
                             children: [
                               Text(
-                                _getGreeting(),
+                                _getGreeting(context),
                                 style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
                               ),
                               const SizedBox(width: 6),
@@ -1290,11 +1294,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildWelcomeInfoItem(Icons.location_on_rounded, _myProfile?['city'] ?? 'Add city'),
+                      _buildWelcomeInfoItem(Icons.location_on_rounded, _myProfile?['city'] ?? l10n.addCity),
                       Container(width: 1, height: 24, color: Colors.white24),
-                      _buildWelcomeInfoItem(Icons.work_rounded, _myProfile?['occupation'] ?? 'Add job'),
+                      _buildWelcomeInfoItem(Icons.work_rounded, _myProfile?['occupation'] ?? l10n.addJob),
                       Container(width: 1, height: 24, color: Colors.white24),
-                      _buildWelcomeInfoItem(Icons.cake_rounded, age > 0 ? '$age yrs' : 'Add DOB'),
+                      _buildWelcomeInfoItem(Icons.cake_rounded, age > 0 ? l10n.yrs(age) : l10n.addDob),
                     ],
                   ),
                 ),
@@ -1335,11 +1339,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '$pendingCount new interest${pendingCount > 1 ? 's' : ''} waiting!',
+                            pendingCount == 1 ? l10n.waitingInterest(pendingCount) : l10n.waitingInterests(pendingCount),
                             style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
                           ),
                           Text(
-                            'Tap to view and respond',
+                            l10n.tapToViewRespond,
                             style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12),
                           ),
                         ],
@@ -1352,7 +1356,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        'View',
+                        l10n.view,
                         style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
                       ),
                     ),
@@ -1379,7 +1383,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(width: 10),
               Text(
-                'Your Activity',
+                l10n.yourActivity,
                 style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ],
@@ -1389,11 +1393,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           // Stat Cards Row
           Row(
             children: [
-              Expanded(child: _buildStatCard(isDark, primaryColor, Icons.favorite_rounded, 'Saved', _savedProfiles.length.toString(), Colors.pink, () => _tabController.animateTo(2))),
+              Expanded(child: _buildStatCard(isDark, primaryColor, Icons.favorite_rounded, l10n.saved, _savedProfiles.length.toString(), Colors.pink, () => _tabController.animateTo(2))),
               const SizedBox(width: 10),
-              Expanded(child: _buildStatCard(isDark, primaryColor, Icons.send_rounded, 'Sent', _sentInterests.length.toString(), Colors.blue, () => _tabController.animateTo(3))),
+              Expanded(child: _buildStatCard(isDark, primaryColor, Icons.send_rounded, l10n.sent, _sentInterests.length.toString(), Colors.blue, () => _tabController.animateTo(3))),
               const SizedBox(width: 10),
-              Expanded(child: _buildStatCard(isDark, primaryColor, Icons.inbox_rounded, 'Received', _receivedInterests.length.toString(), Colors.green, () => _tabController.animateTo(3))),
+              Expanded(child: _buildStatCard(isDark, primaryColor, Icons.inbox_rounded, l10n.received, _receivedInterests.length.toString(), Colors.green, () => _tabController.animateTo(3))),
             ],
           ),
           
@@ -1415,7 +1419,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'Updates & Success Stories',
+                  l10n.updatesSuccessStories,
                   style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ],
@@ -1430,11 +1434,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  String _getGreeting() {
+  String _getGreeting(BuildContext context) {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    final l10n = AppLocalizations.of(context)!;
+    if (hour < 12) return l10n.goodMorning;
+    if (hour < 17) return l10n.goodAfternoon;
+    return l10n.goodEvening;
   }
 
   String _getGreetingEmoji() {
@@ -1554,12 +1559,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         children: [
                           Icon(typeIcon, size: 14, color: typeColor),
                           const SizedBox(width: 4),
-                          Text(type == 'success_story' ? 'Success Story' : type == 'announcement' ? 'Announcement' : 'Update', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: typeColor)),
+                          Text(type == 'success_story' ? l10n.successStory : type == 'announcement' ? l10n.announcement : l10n.update, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: typeColor)),
                         ],
                       ),
                     ),
                     const Spacer(),
-                    Text(timeAgo, style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500])),
+                    Text(_getTimeAgo(createdAt, context), style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500])),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -1576,13 +1581,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  String _getTimeAgo(DateTime dateTime) {
+  String _getTimeAgo(DateTime dateTime, BuildContext context) {
     final difference = DateTime.now().difference(dateTime);
     if (difference.inDays > 7) return '${(difference.inDays / 7).floor()}w ago';
     if (difference.inDays > 0) return '${difference.inDays}d ago';
     if (difference.inHours > 0) return '${difference.inHours}h ago';
     if (difference.inMinutes > 0) return '${difference.inMinutes}m ago';
-    return 'Just now';
+    return AppLocalizations.of(context)!.justNow;
   }
 
   Widget _buildQuickActionCard(bool isDark, IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
@@ -1664,7 +1669,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               onChanged: (value) => setState(() => _searchQuery = value),
               style: GoogleFonts.poppins(fontSize: 15),
               decoration: InputDecoration(
-                hintText: 'Search by name or city...',
+                hintText: l10n.searchHint,
                 hintStyle: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 15),
                 prefixIcon: Container(
                   padding: const EdgeInsets.all(12),
@@ -1715,11 +1720,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Discover Matches',
+                      l10n.discoverMatches,
                       style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
                     ),
                     Text(
-                      '${_filteredProfiles.length} profile${_filteredProfiles.length != 1 ? 's' : ''} found',
+                      _filteredProfiles.length == 1 ? l10n.profileFound(_filteredProfiles.length) : l10n.profilesFound(_filteredProfiles.length),
                       style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12),
                     ),
                   ],
@@ -1738,7 +1743,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         Icon(Icons.filter_alt_rounded, size: 14, color: primaryColor),
                         const SizedBox(width: 4),
                         Text(
-                          'Filtered',
+                          l10n.filtered,
                           style: GoogleFonts.poppins(fontSize: 12, color: primaryColor, fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -1770,7 +1775,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        _searchQuery.isNotEmpty ? 'No matches found' : 'No profiles available',
+                        _searchQuery.isNotEmpty ? l10n.noMatchesFound : l10n.noProfilesAvailable,
                         style: GoogleFonts.poppins(
                           color: isDark ? Colors.white70 : Colors.grey[700],
                           fontSize: 18,
@@ -1780,8 +1785,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       const SizedBox(height: 8),
                       Text(
                         _searchQuery.isNotEmpty
-                            ? 'Try adjusting your search criteria'
-                            : 'Check back later for new profiles',
+                            ? l10n.tryAdjustingSearch
+                            : l10n.checkBackLater,
                         style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
                       ),
                       if (_searchQuery.isNotEmpty) ...[
@@ -1789,7 +1794,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         OutlinedButton.icon(
                           onPressed: () => setState(() => _searchQuery = ''),
                           icon: const Icon(Icons.clear_rounded, size: 18),
-                          label: Text('Clear Search', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                          label: Text(l10n.clearSearch, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: primaryColor,
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -1819,6 +1824,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final isSaved = _savedProfileIds.contains(profileId);
     final hasInterest = _sentInterestIds.contains(profileId);
     final age = _calculateAge(profile['date_of_birth']);
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1921,7 +1927,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               const Icon(Icons.cake_rounded, size: 14, color: Colors.white70),
                               const SizedBox(width: 4),
                               Text(
-                                '$age years old',
+                                l10n.yearsOld(age),
                                 style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
                               ),
                             ],
@@ -1982,7 +1988,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             const Icon(Icons.check_rounded, color: Colors.white, size: 14),
                             const SizedBox(width: 4),
                             Text(
-                              'Interest Sent',
+                              l10n.interestSent,
                               style: GoogleFonts.poppins(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ],
@@ -2017,7 +2023,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           child: OutlinedButton.icon(
                             onPressed: () => _showFullProfileSheet(profile, isDark, primaryColor),
                             icon: const Icon(Icons.visibility_rounded, size: 18),
-                            label: Text('View Profile', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                            label: Text(l10n.viewProfile, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: primaryColor,
                               side: BorderSide(color: primaryColor.withOpacity(0.5)),
@@ -2034,7 +2040,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             },
                             icon: Icon(hasInterest ? Icons.check_rounded : Icons.favorite_rounded, size: 18),
                             label: Text(
-                              hasInterest ? 'Sent' : 'Send Interest',
+                              hasInterest ? l10n.sent : l10n.sendInterest,
                               style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                             ),
                             style: ElevatedButton.styleFrom(
@@ -2085,6 +2091,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _showFullProfileSheet(Map<String, dynamic> profile, bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     final age = _calculateAge(profile['date_of_birth']);
     final profileId = profile['id'] as String;
     final isSaved = _savedProfileIds.contains(profileId);
@@ -2185,7 +2192,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                             const Icon(Icons.cake, color: Colors.white, size: 14),
                                             const SizedBox(width: 6),
                                             Text(
-                                              '$age years', 
+                                              '$age ${l10n.years}',
                                               style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
                                             ),
                                           ],
@@ -2235,7 +2242,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               
                               
                               // Personal Details Grid (from DB)
-                              Text('Personal Details', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+                              Text(l10n.personalDetails, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 16),
                               Container(
                                 padding: const EdgeInsets.all(20),
@@ -2246,11 +2253,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 child: Column(
                                   children: [
                                     if (profile['height'] != null && (profile['height'] as String).isNotEmpty)
-                                      _buildCompactDetailRow(Icons.height_rounded, 'Height', profile['height']),
+                                      _buildCompactDetailRow(Icons.height_rounded, l10n.height, profile['height']),
                                     if (profile['height'] != null && (profile['height'] as String).isNotEmpty)
                                       const SizedBox(height: 16),
                                     if (profile['phone_number'] != null) 
-                                      _buildCompactDetailRow(Icons.phone_rounded, 'Phone', profile['phone_number']),
+                                      _buildCompactDetailRow(Icons.phone_rounded, l10n.phone, profile['phone_number']),
                                   ],
                                 ),
                               ),
@@ -2283,22 +2290,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text('Detailed Biodata', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                                            Text('View full family details', style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12)),
+                                            Text(l10n.detailedBiodata, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+                                            Text(l10n.viewFullFamilyDetails, style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12)),
                                           ],
                                         ),
                                       ),
                                       ElevatedButton(
                                         onPressed: () {
                                           Navigator.pop(context);
-                                          _showBiodataViewer(profile['biodata_url'], profile['full_name'] ?? 'Biodata', primaryColor);
+                                          _showBiodataViewer(profile['biodata_url'], profile['full_name'] ?? l10n.unknown, primaryColor);
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: primaryColor,
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                                           padding: const EdgeInsets.symmetric(horizontal: 20),
                                         ),
-                                        child: Text('View', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white)),
+                                        child: Text(l10n.view, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white)),
                                       ),
                                     ],
                                   ),
@@ -2355,7 +2362,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   },
                                   icon: const Icon(Icons.chat_bubble_rounded, size: 22),
                                   label: Text(
-                                    'Chat Now',
+                                    l10n.chatNow,
                                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
                                   ),
                                   style: ElevatedButton.styleFrom(
@@ -2380,7 +2387,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                                   ),
                                   child: Text(
-                                    hasInterest ? 'Interest Sent' : 'Send Interest',
+                                    hasInterest ? l10n.interestSent : l10n.sendInterest,
                                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
                                   ),
                                 ),
@@ -2523,6 +2530,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildSavedTab(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     if (_savedProfiles.isEmpty) {
       return Center(
         child: Column(
@@ -2545,7 +2553,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             const SizedBox(height: 24),
             Text(
-              'No saved profiles yet',
+              l10n.noSavedProfiles,
               style: GoogleFonts.poppins(
                 color: isDark ? Colors.white70 : Colors.grey[700],
                 fontSize: 18,
@@ -2554,7 +2562,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             const SizedBox(height: 8),
             Text(
-              'Tap the heart icon on profiles\nyou want to save for later',
+              l10n.tapHeartToSave,
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
             ),
@@ -2562,7 +2570,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ElevatedButton.icon(
               onPressed: () => _tabController.animateTo(1),
               icon: const Icon(Icons.explore_rounded, size: 20),
-              label: Text('Explore Profiles', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              label: Text(l10n.exploreProfiles, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
@@ -2601,11 +2609,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Your Shortlist',
+                        l10n.yourShortlist,
                       style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
                     ),
                     Text(
-                      '${_savedProfiles.length} profile${_savedProfiles.length != 1 ? 's' : ''} saved',
+                        _savedProfiles.length == 1 ? l10n.profileSaved(_savedProfiles.length) : l10n.profilesSaved(_savedProfiles.length),
                       style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12),
                     ),
                   ],
@@ -2630,6 +2638,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final isSaved = _savedProfileIds.contains(profileId);
     final hasInterest = _sentInterestIds.contains(profileId);
     final age = _calculateAge(profile['date_of_birth']);
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -2727,7 +2736,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ),
                               if (age > 0)
                                 Text(
-                                  '$age years old',
+                                l10n.yearsOld(age),
                                   style: GoogleFonts.poppins(
                                     color: Colors.white70,
                                     fontSize: 14,
@@ -2794,7 +2803,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           child: OutlinedButton.icon(
                             onPressed: () => _showFullProfileSheet(profile, isDark, primaryColor),
                             icon: const Icon(Icons.visibility_rounded, size: 18),
-                            label: Text('View Profile', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                            label: Text(l10n.viewProfile, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: primaryColor,
                               side: BorderSide(color: primaryColor.withOpacity(0.5)),
@@ -2809,7 +2818,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             onPressed: hasInterest ? null : () => _sendInterest(profileId),
                             icon: Icon(hasInterest ? Icons.check_rounded : Icons.favorite_rounded, size: 18),
                             label: Text(
-                              hasInterest ? 'Sent' : 'Interest',
+                              hasInterest ? l10n.sent : l10n.interests,
                               style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                             ),
                             style: ElevatedButton.styleFrom(
@@ -2860,6 +2869,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildInterestsTab(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     return DefaultTabController(
       length: 2,
       child: Column(
@@ -2908,7 +2918,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     children: [
                       const Icon(Icons.inbox_rounded, size: 18),
                       const SizedBox(width: 8),
-                      Text('Received'),
+                      Text(l10n.received),
                       if (_receivedInterests.isNotEmpty) ...[
                         const SizedBox(width: 6),
                         Container(
@@ -2932,7 +2942,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     children: [
                       const Icon(Icons.send_rounded, size: 18),
                       const SizedBox(width: 8),
-                      Text('Sent'),
+                      Text(l10n.sent),
                       if (_sentInterests.isNotEmpty) ...[
                         const SizedBox(width: 6),
                         Container(
@@ -2969,6 +2979,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
 
   Widget _buildReceivedInterestsList(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     if (_receivedInterests.isEmpty) {
       return Center(
         child: Column(
@@ -2991,7 +3002,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             const SizedBox(height: 24),
             Text(
-              'No interests received yet',
+              l10n.noInterestsReceived,
               style: GoogleFonts.poppins(
                 color: isDark ? Colors.white70 : Colors.grey[700],
                 fontSize: 18,
@@ -3000,7 +3011,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             const SizedBox(height: 8),
             Text(
-              'When someone sends you an interest,\nit will appear here',
+              l10n.whenSomeoneSends,
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
             ),
@@ -3035,7 +3046,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Awaiting Response',
+                    l10n.awaitingResponse,
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
                   ),
                   const Spacer(),
@@ -3046,7 +3057,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${pendingInterests.length} new',
+                      l10n.newCount(pendingInterests.length),
                       style: GoogleFonts.poppins(color: Colors.amber[700], fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -3072,7 +3083,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Previous Interests',
+                    l10n.previousInterests,
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.grey[600]),
                   ),
                 ],
@@ -3091,10 +3102,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (sender == null) return const SizedBox.shrink();
     
     final timeAgo = interest['created_at'] != null 
-        ? _getTimeAgo(DateTime.parse(interest['created_at'])) 
+        ? _getTimeAgo(DateTime.parse(interest['created_at']), context)
         : '';
     final age = _calculateAge(sender['date_of_birth']);
     final status = interest['status'] as String;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -3201,14 +3213,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               if (age > 0) ...[
                                 Icon(Icons.cake_rounded, size: 13, color: Colors.grey[500]),
                                 const SizedBox(width: 4),
-                                Text('$age yrs', style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13)),
+                                Text(l10n.yrs(age), style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13)),
                                 const SizedBox(width: 12),
                               ],
                               Icon(Icons.location_on_rounded, size: 13, color: Colors.grey[500]),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  sender['city'] ?? 'Unknown',
+                                  sender['city'] ?? l10n.unknown,
                                   style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -3234,7 +3246,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             await _updateInterestStatus(interest['id'], 'declined');
                           },
                           icon: const Icon(Icons.close_rounded, size: 18),
-                          label: Text('Decline', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                          label: Text(l10n.decline, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.grey[700],
                             side: BorderSide(color: Colors.grey[300]!),
@@ -3251,7 +3263,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             await _updateInterestStatus(interest['id'], 'accepted');
                           },
                           icon: const Icon(Icons.favorite_rounded, size: 18),
-                          label: Text('Accept Interest', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                          label: Text(l10n.acceptInterest, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
@@ -3273,6 +3285,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildSentInterestsList(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     if (_sentInterests.isEmpty) {
       return Center(
         child: Column(
@@ -3295,7 +3308,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             const SizedBox(height: 24),
             Text(
-              'No interests sent yet',
+              l10n.noInterestsSent,
               style: GoogleFonts.poppins(
                 color: isDark ? Colors.white70 : Colors.grey[700],
                 fontSize: 18,
@@ -3304,7 +3317,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             const SizedBox(height: 8),
             Text(
-              'Send interest to profiles you like\nfrom the Explore tab',
+              l10n.sendInterestFromExplore,
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
             ),
@@ -3312,7 +3325,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ElevatedButton.icon(
               onPressed: () => _tabController.animateTo(1),
               icon: const Icon(Icons.explore_rounded, size: 20),
-              label: Text('Explore Profiles', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              label: Text(l10n.exploreProfiles, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
@@ -3340,7 +3353,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           if (acceptedInterests.isNotEmpty) ...[
             _buildInterestSectionHeader(
               icon: Icons.favorite_rounded,
-              title: 'Matched!',
+              title: l10n.matched,
               count: acceptedInterests.length,
               color: Colors.green,
             ),
@@ -3351,7 +3364,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           if (pendingInterests.isNotEmpty) ...[
             _buildInterestSectionHeader(
               icon: Icons.hourglass_top_rounded,
-              title: 'Awaiting Response',
+              title: l10n.awaitingResponse,
               count: pendingInterests.length,
               color: Colors.amber,
             ),
@@ -3362,7 +3375,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           if (declinedInterests.isNotEmpty) ...[
             _buildInterestSectionHeader(
               icon: Icons.sentiment_neutral_rounded,
-              title: 'Not Matched',
+              title: l10n.notMatched,
               count: declinedInterests.length,
               color: Colors.grey,
             ),
@@ -3419,11 +3432,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (receiver == null) return const SizedBox.shrink();
     
     final timeAgo = interest['created_at'] != null 
-        ? _getTimeAgo(DateTime.parse(interest['created_at'])) 
+        ? _getTimeAgo(DateTime.parse(interest['created_at']), context)
         : '';
     final age = _calculateAge(receiver['date_of_birth']);
     final status = interest['status'] as String;
     final isAccepted = status == 'accepted';
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -3527,14 +3541,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           if (age > 0) ...[
                             Icon(Icons.cake_rounded, size: 13, color: Colors.grey[500]),
                             const SizedBox(width: 4),
-                            Text('$age yrs', style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13)),
+                            Text(l10n.yrs(age), style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13)),
                             const SizedBox(width: 12),
                           ],
                           Icon(Icons.location_on_rounded, size: 13, color: Colors.grey[500]),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              receiver['city'] ?? 'Unknown',
+                              receiver['city'] ?? l10n.unknown,
                               style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -3590,22 +3604,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     Color color;
     IconData icon;
     String label;
+    final l10n = AppLocalizations.of(context)!;
     
     switch (status) {
       case 'accepted':
         color = Colors.green;
         icon = Icons.favorite_rounded;
-        label = 'Matched';
+        label = l10n.matched;
         break;
       case 'declined':
         color = Colors.grey;
         icon = Icons.close_rounded;
-        label = 'Not Interested';
+        label = l10n.notInterested;
         break;
       default:
         color = Colors.amber;
         icon = Icons.schedule_rounded;
-        label = 'Pending';
+        label = l10n.pending;
     }
 
     return Container(
@@ -3634,6 +3649,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildProfileTab(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     final age = _calculateAge(_myProfile?['date_of_birth']);
 
     return SingleChildScrollView(
@@ -3652,16 +3668,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
           const SizedBox(height: 16),
           Text(
-            _myProfile?['full_name'] ?? 'User',
+            _myProfile?['full_name'] ?? l10n.user,
             style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           if (age > 0)
-            Text('$age years', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16)),
+            Text(l10n.yearsOld(age), style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16)),
           const SizedBox(height: 32),
-          _buildProfileInfoCard(isDark, primaryColor, Icons.location_on_rounded, 'City', _myProfile?['city'] ?? 'Not set'),
-          _buildProfileInfoCard(isDark, primaryColor, Icons.work_rounded, 'Occupation', _myProfile?['occupation'] ?? 'Not set'),
-          _buildProfileInfoCard(isDark, primaryColor, Icons.school_rounded, 'Education', _myProfile?['education'] ?? 'Not set'),
-          _buildProfileInfoCard(isDark, primaryColor, Icons.person_rounded, 'Gender', _myProfile?['gender'] ?? 'Not set'),
+          _buildProfileInfoCard(isDark, primaryColor, Icons.location_on_rounded, l10n.city, _myProfile?['city'] ?? l10n.notSet),
+          _buildProfileInfoCard(isDark, primaryColor, Icons.work_rounded, l10n.occupation, _myProfile?['occupation'] ?? l10n.notSet),
+          _buildProfileInfoCard(isDark, primaryColor, Icons.school_rounded, l10n.education, _myProfile?['education'] ?? l10n.notSet),
+          _buildProfileInfoCard(isDark, primaryColor, Icons.person_rounded, l10n.gender, _myProfile?['gender'] ?? l10n.notSet),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -3673,7 +3689,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 }
               },
               icon: const Icon(Icons.edit_rounded),
-              label: Text('Edit Profile', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              label: Text(l10n.editProfile, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -3807,7 +3823,7 @@ class _BiodataViewerScreenState extends State<_BiodataViewerScreen> {
               ),
             );
           },
-          errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
+          errorBuilder: (context, error, stackTrace) => _buildErrorWidget(context),
         ),
       ),
     );
@@ -3815,7 +3831,7 @@ class _BiodataViewerScreenState extends State<_BiodataViewerScreen> {
 
   Widget _buildDocumentViewer() {
     if (_webViewController == null) {
-      return _buildErrorWidget();
+      return _buildErrorWidget(context);
     }
     
     return Stack(
@@ -3829,7 +3845,7 @@ class _BiodataViewerScreenState extends State<_BiodataViewerScreen> {
                 CircularProgressIndicator(color: widget.primaryColor),
                 const SizedBox(height: 16),
                 Text(
-                  'Loading document...',
+                  AppLocalizations.of(context)!.loadingDocument,
                   style: GoogleFonts.poppins(color: Colors.grey),
                 ),
               ],
@@ -3839,7 +3855,7 @@ class _BiodataViewerScreenState extends State<_BiodataViewerScreen> {
     );
   }
 
-  Widget _buildErrorWidget() {
+  Widget _buildErrorWidget(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -3847,12 +3863,12 @@ class _BiodataViewerScreenState extends State<_BiodataViewerScreen> {
           Icon(Icons.error_outline_rounded, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            'Could not load biodata',
+            AppLocalizations.of(context)!.couldNotLoadBiodata,
             style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
-            'The file format may not be supported',
+            AppLocalizations.of(context)!.unsupportedFormat,
             style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13),
           ),
         ],

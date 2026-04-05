@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hitwardhini/screens/welcome_screen.dart';
@@ -7,6 +9,8 @@ import 'package:hitwardhini/screens/profile_creation_screen.dart';
 import 'package:hitwardhini/screens/subscription_screen.dart';
 import 'package:hitwardhini/screens/edit_profile_screen.dart';
 import 'package:hitwardhini/screens/admin_screen.dart';
+import 'package:hitwardhini/providers/locale_provider.dart';
+import 'package:hitwardhini/l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +20,12 @@ Future<void> main() async {
     anonKey: 'sb_publishable_SBglOlmrRU_jhtdtZ1yzZA_5eX61BPo',
   );
   
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => LocaleProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -24,9 +33,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context);
+
     return MaterialApp(
       title: 'Hitwardhini',
       debugShowCheckedModeBanner: false,
+      locale: localeProvider.locale,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('mr'),
+      ],
       
       theme: ThemeData(
         brightness: Brightness.light,
