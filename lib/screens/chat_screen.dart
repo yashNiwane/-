@@ -93,7 +93,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading messages: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${AppLocalizations.of(context)!.errorLoadingMessages}: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -145,7 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
             _isBlockedByMe = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User unblocked'), backgroundColor: Colors.green),
+            SnackBar(content: Text(AppLocalizations.of(context)!.userUnblocked), backgroundColor: Colors.green),
           );
         }
       } else {
@@ -160,14 +160,14 @@ class _ChatScreenState extends State<ChatScreen> {
             _isBlockedByMe = true;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User blocked'), backgroundColor: Colors.red),
+            SnackBar(content: Text(AppLocalizations.of(context)!.userBlocked), backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(AppLocalizations.of(context)!.errorMsg(e.toString())), backgroundColor: Colors.red),
         );
       }
     }
@@ -188,7 +188,7 @@ class _ChatScreenState extends State<ChatScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send message: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('${AppLocalizations.of(context)!.failedToSendMessage}: $e'), backgroundColor: Colors.red),
       );
       // Restore the message if failed
       _messageController.text = content;
@@ -412,7 +412,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (_isBlockedByMe)
             TextButton(
               onPressed: _toggleBlock,
-              child: Text('Unblock', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+              child: Text(AppLocalizations.of(context)!.unblock, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
             ),
         ],
       ),
@@ -626,7 +626,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       minLines: 1,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: InputDecoration(
-                        hintText: 'Type a message...',
+                        hintText: AppLocalizations.of(context)!.typeMessage,
                         hintStyle: GoogleFonts.poppins(color: Colors.grey[500]),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 12),

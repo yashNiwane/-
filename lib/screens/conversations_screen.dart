@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hitwardhini/l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'chat_screen.dart';
 
@@ -259,7 +260,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             ElevatedButton.icon(
               onPressed: () => Navigator.pop(context),
               icon: const Icon(Icons.explore_rounded),
-              label: Text('Explore Profiles', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              label: Text(AppLocalizations.of(context)!.exploreProfiles, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,

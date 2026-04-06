@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:hitwardhini/widgets/glass_container.dart';
+import 'package:hitwardhini/providers/locale_provider.dart';
+import 'package:hitwardhini/l10n/app_localizations.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -71,7 +74,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               child: const Icon(Icons.block_rounded, color: Colors.red, size: 28),
             ),
             const SizedBox(width: 12),
-            const Text('Account Blocked'),
+            Text(AppLocalizations.of(context)!.accountBlocked),
           ],
         ),
         content: Column(
@@ -79,19 +82,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Your account has been blocked by the administrator.',
+              AppLocalizations.of(context)!.accountBlockedMessage,
               style: GoogleFonts.poppins(fontSize: 14),
             ),
             if (reason != null && reason.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
-                'Reason: $reason',
+                '${AppLocalizations.of(context)!.reason}: $reason',
                 style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
               ),
             ],
             const SizedBox(height: 12),
             Text(
-              'Please contact support for assistance.',
+              AppLocalizations.of(context)!.contactSupport,
               style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[500]),
             ),
           ],
@@ -103,7 +106,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('OK'),
+            child: Text(AppLocalizations.of(context)!.ok),
           ),
         ],
       ),
@@ -119,7 +122,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       );
     } catch (error) {
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $error')));
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.loginFailed}: $error')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -135,6 +138,39 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       body: Stack(
         children: [
           // Subtle top gradient for a modern touch (only 20% of screen)
+          // Language Switcher
+          Positioned(
+            top: 40,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: DropdownButton<Locale>(
+                value: Provider.of<LocaleProvider>(context).locale,
+                underline: const SizedBox(),
+                dropdownColor: Theme.of(context).scaffoldBackgroundColor,
+                onChanged: (Locale? newLocale) {
+                  if (newLocale != null) {
+                    Provider.of<LocaleProvider>(context, listen: false).setLocale(newLocale);
+                  }
+                },
+                items: const [
+                  DropdownMenuItem(
+                    value: Locale('en'),
+                    child: Text('English'),
+                  ),
+                  DropdownMenuItem(
+                    value: Locale('mr'),
+                    child: Text('मराठी'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           Positioned(
             top: 0,
             left: 0,
@@ -184,7 +220,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           
                           // Titles
                           Text(
-                            'HITWARDHINI',
+                            AppLocalizations.of(context)!.appTitle,
                             style: GoogleFonts.poppins(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
@@ -194,7 +230,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Find Proper Matches',
+                            AppLocalizations.of(context)!.findProperMatches,
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -227,7 +263,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                       ),
                                       const SizedBox(width: 14),
                                       Text(
-                                        'Continue with Google',
+                                        AppLocalizations.of(context)!.continueWithGoogle,
                                         style: GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 16),
                                       ),
                                     ],
@@ -239,7 +275,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           
                           // Footer within card
                           Text(
-                            'Secure & Trusted Matrimony',
+                            AppLocalizations.of(context)!.secureTrustedMatrimony,
                             style: GoogleFonts.montserrat(
                               fontSize: 12, 
                               color: isDark ? Colors.grey[500] : Colors.grey[400],

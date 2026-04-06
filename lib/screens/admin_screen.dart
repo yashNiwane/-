@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hitwardhini/l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
@@ -180,11 +181,11 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         ),
         content: Text(content),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppLocalizations.of(context)!.cancel)),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Confirm'),
+            child: Text(AppLocalizations.of(context)!.confirm),
           ),
         ],
       ),
@@ -232,7 +233,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                       child: const Icon(Icons.add_circle_rounded, color: Colors.white, size: 22),
                     ),
                     const SizedBox(width: 14),
-                    Text('Create Post', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+                    Text(AppLocalizations.of(context)!.createPost, style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                     const Spacer(),
                     IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                   ],
@@ -246,26 +247,26 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Post Type Selection
-                      Text('Post Type', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text(AppLocalizations.of(context)!.postType, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          _buildTypeChip('Update', 'update', selectedType, Colors.blue, (v) => setModalState(() => selectedType = v)),
+                          _buildTypeChip(AppLocalizations.of(context)!.update, 'update', selectedType, Colors.blue, (v) => setModalState(() => selectedType = v)),
                           const SizedBox(width: 10),
-                          _buildTypeChip('Success Story', 'success_story', selectedType, Colors.green, (v) => setModalState(() => selectedType = v)),
+                          _buildTypeChip(AppLocalizations.of(context)!.successStory, 'success_story', selectedType, Colors.green, (v) => setModalState(() => selectedType = v)),
                           const SizedBox(width: 10),
-                          _buildTypeChip('Announcement', 'announcement', selectedType, Colors.orange, (v) => setModalState(() => selectedType = v)),
+                          _buildTypeChip(AppLocalizations.of(context)!.announcement, 'announcement', selectedType, Colors.orange, (v) => setModalState(() => selectedType = v)),
                         ],
                       ),
                       const SizedBox(height: 24),
                       
                       // Title
-                      Text('Title', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text(AppLocalizations.of(context)!.title, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 8),
                       TextField(
                         controller: titleController,
                         decoration: InputDecoration(
-                          hintText: 'Enter title...',
+                          hintText: AppLocalizations.of(context)!.enterTitle,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           filled: true,
                           fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
@@ -274,13 +275,13 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                       const SizedBox(height: 20),
                       
                       // Content
-                      Text('Content', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text(AppLocalizations.of(context)!.content, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 8),
                       TextField(
                         controller: contentController,
                         maxLines: 4,
                         decoration: InputDecoration(
-                          hintText: 'Write your post...',
+                          hintText: AppLocalizations.of(context)!.writePost,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           filled: true,
                           fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
@@ -289,7 +290,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                       const SizedBox(height: 20),
                       
                       // Media Upload
-                      Text('Media (Optional)', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text(AppLocalizations.of(context)!.mediaOptional, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 10),
                       if (mediaUrl != null)
                         Stack(
@@ -319,7 +320,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                             Expanded(
                               child: _buildMediaButton(
                                 icon: Icons.image_rounded,
-                                label: 'Add Image',
+                                label: AppLocalizations.of(context)!.addImage,
                                 color: Colors.purple,
                                 isDark: isDark,
                                 isLoading: isUploading,
@@ -334,7 +335,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                             Expanded(
                               child: _buildMediaButton(
                                 icon: Icons.videocam_rounded,
-                                label: 'Add Video',
+                                label: AppLocalizations.of(context)!.addVideo,
                                 color: Colors.teal,
                                 isDark: isDark,
                                 isLoading: isUploading,
@@ -380,7 +381,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
-                          child: Text('Publish Post', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16)),
+                          child: Text(AppLocalizations.of(context)!.publishPost, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16)),
                         ),
                       ),
                       const SizedBox(height: 30),
@@ -485,7 +486,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           children: [
             Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.block_rounded, color: Colors.red)),
             const SizedBox(width: 12),
-            const Text('Block User'),
+            Text(AppLocalizations.of(context)!.blockUser),
           ],
         ),
         content: Column(
@@ -493,19 +494,19 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           children: [
             TextField(
               controller: emailController,
-              decoration: InputDecoration(hintText: 'Email address', prefixIcon: const Icon(Icons.email_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+              decoration: InputDecoration(hintText: AppLocalizations.of(context)!.emailAddress, prefixIcon: const Icon(Icons.email_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
-              decoration: InputDecoration(hintText: 'Reason (optional)', prefixIcon: const Icon(Icons.note_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+              decoration: InputDecoration(hintText: AppLocalizations.of(context)!.reason, prefixIcon: const Icon(Icons.note_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               maxLines: 2,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
           ElevatedButton(
             onPressed: () async {
               if (emailController.text.isEmpty || !emailController.text.contains('@')) {
@@ -530,7 +531,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Block'),
+            child: Text(AppLocalizations.of(context)!.blockUser),
           ),
         ],
       ),
@@ -565,7 +566,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           children: [
             Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(gradient: LinearGradient(colors: [primaryColor, primaryColor.withOpacity(0.7)]), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 20)),
             const SizedBox(width: 12),
-            Text('Admin Panel', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+            Text(AppLocalizations.of(context)!.adminPanel, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
           ],
         ),
         actions: [IconButton(icon: Icon(Icons.refresh_rounded, color: isDark ? Colors.white70 : Colors.black54), onPressed: _fetchAllData)],
@@ -600,12 +601,13 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   }
 
   Widget _buildDashboardTab(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Overview', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+          Text(l10n.overview, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 20),
           GridView.count(
             crossAxisCount: 2,
@@ -615,14 +617,14 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             crossAxisSpacing: 16,
             childAspectRatio: 1.1,
             children: [
-              _buildStatCard('Total Users', _totalUsers.toString(), Icons.people_rounded, const Color(0xFF6366F1), isDark),
-              _buildStatCard('Paid Users', _paidUsers.toString(), Icons.verified_rounded, const Color(0xFF22C55E), isDark),
-              _buildStatCard('Total Posts', _totalUpdates.toString(), Icons.article_rounded, const Color(0xFFF59E0B), isDark),
-              _buildStatCard('Blocked', _blockedCount.toString(), Icons.block_rounded, const Color(0xFFEF4444), isDark),
+              _buildStatCard(l10n.totalUsers, _totalUsers.toString(), Icons.people_rounded, const Color(0xFF6366F1), isDark),
+              _buildStatCard(l10n.paidUsers, _paidUsers.toString(), Icons.verified_rounded, const Color(0xFF22C55E), isDark),
+              _buildStatCard(l10n.totalPosts, _totalUpdates.toString(), Icons.article_rounded, const Color(0xFFF59E0B), isDark),
+              _buildStatCard(l10n.blocked, _blockedCount.toString(), Icons.block_rounded, const Color(0xFFEF4444), isDark),
             ],
           ),
           const SizedBox(height: 32),
-          Text('Recent Users', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+          Text(l10n.recentUsers, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 16),
           ..._users.take(5).map((user) => _buildUserListTile(user, isDark, primaryColor, compact: true)),
         ],
@@ -766,6 +768,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   }
 
   Widget _buildUpdatesTab(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     return Stack(
       children: [
         _updates.isEmpty
@@ -775,8 +778,8 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                   children: [
                     Icon(Icons.article_outlined, size: 80, color: Colors.grey[400]),
                     const SizedBox(height: 16),
-                    Text('No posts yet', style: GoogleFonts.poppins(fontSize: 18, color: Colors.grey[500])),
-                    Text('Create your first post!', style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[400])),
+                    Text(l10n.noPostsYet, style: GoogleFonts.poppins(fontSize: 18, color: Colors.grey[500])),
+                    Text(l10n.createFirstPost, style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[400])),
                   ],
                 ),
               )
@@ -791,7 +794,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             onPressed: () => _showCreateUpdateDialog(isDark, primaryColor),
             backgroundColor: primaryColor,
             icon: const Icon(Icons.add, color: Colors.white),
-            label: Text('New Post', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+            label: Text(l10n.newPost, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
           ),
         ),
       ],
@@ -869,6 +872,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   }
 
   Widget _buildBlockedTab(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     return Stack(
       children: [
         _blockedUsers.isEmpty
@@ -878,7 +882,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                   children: [
                     Icon(Icons.verified_user_outlined, size: 80, color: Colors.grey[400]),
                     const SizedBox(height: 16),
-                    Text('No blocked users', style: GoogleFonts.poppins(fontSize: 18, color: Colors.grey[500])),
+                    Text(l10n.noBlockedUsers, style: GoogleFonts.poppins(fontSize: 18, color: Colors.grey[500])),
                   ],
                 ),
               )
@@ -920,7 +924,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             onPressed: () => _showBlockUserDialog(isDark, primaryColor),
             backgroundColor: Colors.red,
             icon: const Icon(Icons.block, color: Colors.white),
-            label: Text('Block User', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+            label: Text(l10n.blockUser, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
           ),
         ),
       ],

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:hitwardhini/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
 
@@ -137,10 +138,11 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
   }
 
   bool _validateCurrentStep() {
+    final l10n = AppLocalizations.of(context)!;
     switch (_currentStep) {
       case 0: // Name
         if (_nameController.text.trim().length < 3) {
-          _showError('Please enter a valid full name (min 3 chars)');
+          _showError(l10n.pleaseEnterFullName);
           return false;
         }
         return true;
@@ -149,13 +151,13 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
       case 2: // Phone
         final phone = _phoneController.text.trim();
         if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
-          _showError('Please enter a valid 10-digit phone number');
+          _showError(l10n.pleaseEnterPhone);
           return false;
         }
         return true;
       case 3: // DOB
         if (_selectedDate == null) {
-          _showError('Please select your date of birth');
+          _showError(l10n.pleaseSelectDob);
           return false;
         }
         return true;
@@ -164,51 +166,51 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
         final inches = _heightInchesController.text.trim();
         
         if (feet.isEmpty) {
-           _showError('Please enter feet');
+           _showError(l10n.pleaseEnterFeet);
            return false;
         }
         
         final feetVal = int.tryParse(feet);
         if (feetVal == null || feetVal <= 0 || feetVal > 8) {
-           _showError('Please enter valid feet (1-8)');
+           _showError(l10n.pleaseEnterValidFeet);
            return false;
         }
 
         if (inches.isNotEmpty) {
           final inchesVal = int.tryParse(inches);
           if (inchesVal == null || inchesVal < 0 || inchesVal >= 12) {
-             _showError('Please enter valid inches (0-11)');
+             _showError(l10n.pleaseEnterValidInches);
              return false;
           }
         }
         return true;
       case 5: // Education
         if (_educationController.text.trim().isEmpty) {
-          _showError('Please enter your education qualification');
+          _showError(l10n.pleaseEnterEducation);
           return false;
         }
         return true;
       case 6: // Occupation
         if (_occupationController.text.trim().isEmpty) {
-          _showError('Please enter your occupation');
+          _showError(l10n.pleaseEnterOccupation);
           return false;
         }
         return true;
       case 7: // City
         if (_cityController.text.trim().isEmpty) {
-           _showError('Please enter your current city');
+           _showError(l10n.pleaseEnterCity);
            return false;
         }
         return true;
       case 8: // Photo
         if (_profileImage == null) {
-          _showError('Please select a profile photo');
+          _showError(l10n.pleaseSelectPhoto);
           return false;
         }
         return true;
       case 9: // Biodata
         if (_biodataFile == null) {
-          _showError('Please upload your biodata');
+          _showError(l10n.pleaseUploadBiodata);
           return false;
         }
         return true;
@@ -271,6 +273,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
 
   Future<void> _submitProfile() async {
     setState(() => _isLoading = true);
+    final l10n = AppLocalizations.of(context)!;
     try {
       final userId = _supabase.auth.currentUser!.id;
       final profileUrl = await _uploadFile(_profileImage!, 'avatars', 'profile_$userId');
@@ -317,7 +320,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Profile Generated!',
+                    l10n.profileGenerated,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 22,
@@ -327,7 +330,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Your profile is now live. You can start searching for matches immediately.',
+                    l10n.profileLiveSearch,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 14,
@@ -351,7 +354,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       child: Text(
-                        'Enter Matrimony',
+                        l10n.enterMatrimony,
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -367,7 +370,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
         );
       }
     } catch (e) {
-      _showError('Error saving profile: $e');
+      _showError('${l10n.errorSavingProfile}: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -439,19 +442,19 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _buildSimpleStep(
-                    title: "What's your name?",
-                    subtitle: "Enter your full name (First & Last).",
+                    title: AppLocalizations.of(context)!.whatIsYourName,
+                    subtitle: AppLocalizations.of(context)!.enterFullName,
                     child: _buildTextField(_nameController, "Ex. Rohit Kale"),
                   ),
                   _buildGenderStep(), // New Step 1
                   _buildSimpleStep(
-                    title: "Type your number?",
-                    subtitle: "For official communication only.",
+                    title: AppLocalizations.of(context)!.typeYourNumber,
+                    subtitle: AppLocalizations.of(context)!.officialCommunication,
                     child: _buildTextField(_phoneController, "Ex. 9876543210", type: TextInputType.phone),
                   ),
                   _buildSimpleStep(
-                    title: "When were you born?",
-                    subtitle: "To find matches in your age group.",
+                    title: AppLocalizations.of(context)!.whenWereYouBorn,
+                    subtitle: AppLocalizations.of(context)!.findAgeGroupMatches,
                     child: GestureDetector(
                       onTap: () => _selectDate(context),
                       child: Container(
@@ -466,7 +469,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                             Icon(Icons.calendar_today, color: primaryColor),
                             const SizedBox(width: 16),
                             Text(
-                              _selectedDate == null ? 'Select Date' : DateFormat('dd MMM yyyy').format(_selectedDate!),
+                              _selectedDate == null ? AppLocalizations.of(context)!.selectDate : DateFormat('dd MMM yyyy').format(_selectedDate!),
                               style: GoogleFonts.montserrat(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w500,
@@ -479,34 +482,34 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                     ),
                   ),
                   _buildSimpleStep(
-                    title: "How tall are you?",
-                    subtitle: "Enter your height in Feet and Inches.",
+                    title: AppLocalizations.of(context)!.howTallAreYou,
+                    subtitle: AppLocalizations.of(context)!.enterHeightFeetInches,
                     child: Row(
                       children: [
-                        Expanded(child: _buildTextField(_heightFeetController, "Feet", type: TextInputType.number)),
+                        Expanded(child: _buildTextField(_heightFeetController, AppLocalizations.of(context)!.feet, type: TextInputType.number)),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildTextField(_heightInchesController, "Inches", type: TextInputType.number)),
+                        Expanded(child: _buildTextField(_heightInchesController, AppLocalizations.of(context)!.inches, type: TextInputType.number)),
                       ],
                     ),
                   ),
                   _buildSimpleStep(
-                    title: "What is your Education?",
-                    subtitle: "Degrees, Specializations, etc.",
+                    title: AppLocalizations.of(context)!.whatIsYourEducation,
+                    subtitle: AppLocalizations.of(context)!.degreesSpecializations,
                     child: _buildTextField(_educationController, "Ex. B.Tech, MBA"),
                   ),
                   _buildSimpleStep(
-                    title: "What do you do?",
-                    subtitle: "Your profession or job title.",
+                    title: AppLocalizations.of(context)!.whatDoYouDo,
+                    subtitle: AppLocalizations.of(context)!.professionJobTitle,
                     child: _buildTextField(_occupationController, "Ex. Software Engineer"),
                   ),
                   _buildSimpleStep(
-                    title: "Where do you live?",
-                    subtitle: "Current city of residence.",
+                    title: AppLocalizations.of(context)!.whereDoYouLive,
+                    subtitle: AppLocalizations.of(context)!.currentCity,
                     child: _buildTextField(_cityController, "Ex. Pune"),
                   ),
                   _buildSimpleStep(
-                    title: "Add a Profile Photo",
-                    subtitle: "Profiles with photos get 5x more interest.",
+                    title: AppLocalizations.of(context)!.addProfilePhoto,
+                    subtitle: AppLocalizations.of(context)!.photoInterestBoost,
                     child: Center(
                       child: GestureDetector(
                         onTap: _pickImage,
@@ -522,8 +525,8 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                     ),
                   ),
                   _buildSimpleStep(
-                    title: "Upload Biodata",
-                    subtitle: "Detailed family background (PDF/Word).",
+                    title: AppLocalizations.of(context)!.uploadBiodata,
+                    subtitle: AppLocalizations.of(context)!.familyBackground,
                     child: GestureDetector(
                       onTap: _pickBiodata,
                       child: Container(
@@ -544,7 +547,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                             Icon(Icons.upload_file, size: 50, color: primaryColor),
                             const SizedBox(height: 16),
                             Text(
-                              _biodataFileName ?? 'Tap to Upload Document',
+                              _biodataFileName ?? AppLocalizations.of(context)!.tapToUpload,
                               style: GoogleFonts.montserrat(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -555,7 +558,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Text(
-                                  'Supports PDF, DOC, DOCX',
+                                  AppLocalizations.of(context)!.supportsFormats,
                                   style: GoogleFonts.montserrat(fontSize: 12, color: Colors.grey),
                                 ),
                               ),
@@ -586,7 +589,7 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
                   child: _isLoading
                       ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : Text(
-                          _currentStep == _totalSteps - 1 ? 'Complete Profile' : 'Continue',
+                          _currentStep == _totalSteps - 1 ? AppLocalizations.of(context)!.completeProfile : AppLocalizations.of(context)!.continueText,
                           style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                 ),
@@ -638,13 +641,13 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
 
   Widget _buildGenderStep() {
     return _buildSimpleStep(
-      title: "What is your Gender?",
-      subtitle: "To find relevant matches.",
+      title: AppLocalizations.of(context)!.whatIsYourGender,
+      subtitle: AppLocalizations.of(context)!.findRelevantMatches,
       child: Column(
         children: [
-          _buildSelectionOption("Male", Icons.male_rounded, _selectedGender, (val) => setState(() => _selectedGender = val)),
+          _buildSelectionOption(AppLocalizations.of(context)!.male, Icons.male_rounded, _selectedGender == 'Male' ? AppLocalizations.of(context)!.male : '', (val) => setState(() => _selectedGender = 'Male')),
           const SizedBox(height: 16),
-          _buildSelectionOption("Female", Icons.female_rounded, _selectedGender, (val) => setState(() => _selectedGender = val)),
+          _buildSelectionOption(AppLocalizations.of(context)!.female, Icons.female_rounded, _selectedGender == 'Female' ? AppLocalizations.of(context)!.female : '', (val) => setState(() => _selectedGender = 'Female')),
         ],
       ),
     );

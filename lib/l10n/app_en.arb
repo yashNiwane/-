@@ -1,0 +1,351 @@
+{
+  "@@locale": "en",
+  "appTitle": "HITWARDHINI",
+  "findProperMatches": "Find Proper Matches",
+  "continueWithGoogle": "Continue with Google",
+  "secureTrustedMatrimony": "Secure & Trusted Matrimony",
+  "accountBlocked": "Account Blocked",
+  "accountBlockedMessage": "Your account has been blocked by the administrator.",
+  "reason": "Reason",
+  "contactSupport": "Please contact support for assistance.",
+  "ok": "OK",
+  "loginFailed": "Login failed",
+  "selectLanguage": "Select Language",
+  "home": "Home",
+  "explore": "Explore",
+  "saved": "Saved",
+  "interests": "Interests",
+  "viewProfile": "View Profile",
+  "updatePhoto": "Update Photo",
+  "adminPanel": "Admin Panel",
+  "signOut": "Sign Out",
+  "goodMorning": "Good morning",
+  "goodAfternoon": "Good afternoon",
+  "goodEvening": "Good evening",
+  "yourActivity": "Your Activity",
+  "sent": "Sent",
+  "received": "Received",
+  "updatesSuccessStories": "Updates & Success Stories",
+  "waitingInterest": "{count} new interest waiting!",
+  "@waitingInterest": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "waitingInterests": "{count} new interests waiting!",
+  "@waitingInterests": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tapToViewRespond": "Tap to view and respond",
+  "view": "View",
+  "yearsOld": "{age} years old",
+  "@yearsOld": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "searchHint": "Search by name or city...",
+  "discoverMatches": "Discover Matches",
+  "profilesFound": "{count} profiles found",
+  "@profilesFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileFound": "{count} profile found",
+  "@profileFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filtered": "Filtered",
+  "noMatchesFound": "No matches found",
+  "noProfilesAvailable": "No profiles available",
+  "tryAdjustingSearch": "Try adjusting your search criteria",
+  "checkBackLater": "Check back later for new profiles",
+  "clearSearch": "Clear Search",
+  "sendInterest": "Send Interest",
+  "interestSent": "Interest Sent",
+  "filterProfiles": "Filter Profiles",
+  "refineByAge": "Refine by age range",
+  "ageRange": "Age Range",
+  "yrs": "{count} yrs",
+  "@yrs": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reset": "Reset",
+  "applyFilter": "Apply Filter",
+  "noSavedProfiles": "No saved profiles yet",
+  "tapHeartToSave": "Tap the heart icon on profiles\nyou want to save for later",
+  "exploreProfiles": "Explore Profiles",
+  "yourShortlist": "Your Shortlist",
+  "profilesSaved": "{count} profiles saved",
+  "@profilesSaved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileSaved": "{count} profile saved",
+  "@profileSaved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noInterestsReceived": "No interests received yet",
+  "whenSomeoneSends": "When someone sends you an interest,\nit will appear here",
+  "awaitingResponse": "Awaiting Response",
+  "newCount": "{count} new",
+  "@newCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "previousInterests": "Previous Interests",
+  "decline": "Decline",
+  "acceptInterest": "Accept Interest",
+  "noInterestsSent": "No interests sent yet",
+  "sendInterestFromExplore": "Send interest to profiles you like\nfrom the Explore tab",
+  "matched": "Matched!",
+  "notMatched": "Not Matched",
+  "pending": "Pending",
+  "notInterested": "Not Interested",
+  "whatIsYourName": "What's your name?",
+  "enterFullName": "Enter your full name (First & Last).",
+  "whatIsYourGender": "What is your Gender?",
+  "findRelevantMatches": "To find relevant matches.",
+  "typeYourNumber": "Type your number?",
+  "officialCommunication": "For official communication only.",
+  "whenWereYouBorn": "When were you born?",
+  "findAgeGroupMatches": "To find matches in your age group.",
+  "selectDate": "Select Date",
+  "howTallAreYou": "How tall are you?",
+  "enterHeightFeetInches": "Enter your height in Feet and Inches.",
+  "feet": "Feet",
+  "inches": "Inches",
+  "whatIsYourEducation": "What is your Education?",
+  "degreesSpecializations": "Degrees, Specializations, etc.",
+  "whatDoYouDo": "What do you do?",
+  "professionJobTitle": "Your profession or job title.",
+  "whereDoYouLive": "Where do you live?",
+  "currentCity": "Current city of residence.",
+  "addProfilePhoto": "Add a Profile Photo",
+  "photoInterestBoost": "Profiles with photos get 5x more interest.",
+  "uploadBiodata": "Upload Biodata",
+  "familyBackground": "Detailed family background (PDF/Word).",
+  "tapToUpload": "Tap to Upload Document",
+  "supportsFormats": "Supports PDF, DOC, DOCX",
+  "completeProfile": "Complete Profile",
+  "continueText": "Continue",
+  "male": "Male",
+  "female": "Female",
+  "profileGenerated": "Profile Generated!",
+  "profileLiveSearch": "Your profile is now live. You can start searching for matches immediately.",
+  "enterMatrimony": "Enter Matrimony",
+  "errorSavingProfile": "Error saving profile",
+  "pleaseEnterFullName": "Please enter a valid full name (min 3 chars)",
+  "pleaseEnterPhone": "Please enter a valid 10-digit phone number",
+  "pleaseSelectDob": "Please select your date of birth",
+  "pleaseEnterFeet": "Please enter feet",
+  "pleaseEnterValidFeet": "Please enter valid feet (1-8)",
+  "pleaseEnterValidInches": "Please enter valid inches (0-11)",
+  "pleaseEnterEducation": "Please enter your education qualification",
+  "pleaseEnterOccupation": "Please enter your occupation",
+  "pleaseEnterCity": "Please enter your current city",
+  "pleaseSelectPhoto": "Please select a profile photo",
+  "pleaseUploadBiodata": "Please upload your biodata",
+  "editProfile": "Edit Profile",
+  "fullName": "Full Name",
+  "phoneNumber": "Phone Number",
+  "emailAddress": "Email Address",
+  "city": "City",
+  "occupation": "Occupation",
+  "education": "Education",
+  "saveChanges": "Save Changes",
+  "profileUpdatedSuccessfully": "Profile updated successfully!",
+  "errorUpdatingProfile": "Error updating profile",
+  "pleaseEnter": "Please enter {field}",
+  "@pleaseEnter": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "supportOurCause": "Support Our Cause",
+  "donateToHelp": "Donate to help people of Teli Samaj to grow more.",
+  "viewUnlimitedProfiles": "View Unlimited Profiles",
+  "viewUnlimitedSubtitle": "Access thousands of verified profiles.",
+  "directMessaging": "Direct Messaging",
+  "directMessagingSubtitle": "Connect directly with matches.",
+  "verifiedBadge": "Verified Badge",
+  "verifiedBadgeSubtitle": "Stand out with a premium badge.",
+  "prioritySupport": "Priority Support",
+  "prioritySupportSubtitle": "Get help whenever you need it.",
+  "yearlyDonation": "Yearly Donation",
+  "bestValue": "Best Value",
+  "payViaUpi": "Pay ₹101 via UPI",
+  "processing": "Processing...",
+  "donationSuccessful": "Donation Successful! Access Granted for 1 Year",
+  "errorOpeningGateway": "Error opening payment gateway",
+  "paymentSuccessfulUpdateError": "Payment successful but failed to update status",
+  "paymentFailed": "Payment Failed",
+  "externalWallet": "External Wallet",
+  "dashboard": "Dashboard",
+  "users": "Users",
+  "posts": "Posts",
+  "blocked": "Blocked",
+  "overview": "Overview",
+  "totalUsers": "Total Users",
+  "paidUsers": "Paid Users",
+  "totalPosts": "Total Posts",
+  "recentUsers": "Recent Users",
+  "markUnpaid": "Mark Unpaid",
+  "markPaid": "Mark Paid",
+  "removeAdmin": "Remove Admin",
+  "makeAdmin": "Make Admin",
+  "delete": "Delete",
+  "noPostsYet": "No posts yet",
+  "createFirstPost": "Create your first post!",
+  "newPost": "New Post",
+  "createPost": "Create Post",
+  "postType": "Post Type",
+  "title": "Title",
+  "content": "Content",
+  "publishPost": "Publish Post",
+  "addEmoji": "Add Emoji",
+  "addImage": "Add Image",
+  "addVideo": "Add Video",
+  "noBlockedUsers": "No blocked users",
+  "blockUser": "Block User",
+  "unblock": "Unblock",
+  "messages": "Messages",
+  "noMatchesYet": "No Matches Yet",
+  "startChatting": "When you or another person accepts\nan interest, you can start chatting!",
+  "sayHello": "Say hello! 👋",
+  "startConversation": "Start the conversation!",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "typeMessage": "Type a message...",
+  "you": "You: ",
+  "unblockUser": "Unblock User",
+  "youHaveBlocked": "You have blocked this user.",
+  "cannotReply": "You cannot reply to this conversation.",
+  "sayHelloAndGetToKnow": "Say hello and get to know each other",
+  "failedToSendMessage": "Failed to send message",
+  "userBlocked": "User blocked",
+  "userUnblocked": "User unblocked",
+  "errorLoadingMessages": "Error loading messages",
+  "basicInformation": "Basic Information",
+  "gender": "Gender",
+  "height": "Height",
+  "locationCareer": "Location & Career",
+  "contact": "Contact",
+  "phone": "Phone",
+  "years": "years",
+  "personalDetails": "Personal Details",
+  "detailedBiodata": "Detailed Biodata",
+  "viewFullFamilyDetails": "View full family details",
+  "chatNow": "Chat Now",
+  "removedFromSaved": "Removed from saved",
+  "profileSavedMsg": "Profile saved!",
+  "interestSentMsg": "Interest sent!",
+  "interestAccepted": "Interest accepted!",
+  "interestDeclined": "Interest declined",
+  "newMessageFrom": "New message from {name}",
+  "@newMessageFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profilePhotoUpdated": "Profile photo updated!",
+  "errorMsg": "Error: {error}",
+  "@errorMsg": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "userMarkedPaid": "User marked as paid!",
+  "userMarkedUnpaid": "User marked as unpaid",
+  "adminAccessGranted": "Admin access granted!",
+  "adminAccessRevoked": "Admin access revoked",
+  "userDeletedSuccessfully": "User deleted successfully",
+  "postCreatedSuccessfully": "Post created successfully!",
+  "postDeleted": "Post deleted",
+  "enterValidEmail": "Enter a valid email",
+  "emailAlreadyBlocked": "Email already blocked",
+  "user": "User",
+  "unknown": "Unknown",
+  "successStory": "Success Story",
+  "announcement": "Announcement",
+  "update": "Update",
+  "justNow": "Just now",
+  "loadingDocument": "Loading document...",
+  "couldNotLoadBiodata": "Could not load biodata",
+  "unsupportedFormat": "The file format may not be supported",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "deleteUser": "Delete User",
+  "deleteUserConfirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+  "@deleteUserConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "enterTitle": "Enter title...",
+  "writePost": "Write your post...",
+  "mediaOptional": "Media (Optional)",
+  "pleaseEnterTitle": "Please enter a title",
+  "uploadFailed": "Upload failed",
+  "deletePost": "Delete Post",
+  "deletePostConfirm": "Are you sure you want to delete this post?",
+  "unblockUserConfirm": "Unblock {email}?",
+  "@unblockUserConfirm": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "blockedAt": "Blocked: {date}",
+  "@blockedAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notSet": "Not set",
+  "addCity": "Add city",
+  "addJob": "Add job",
+  "addDob": "Add DOB",
+  "free": "Free",
+  "paid": "Paid"
+}
