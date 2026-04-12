@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hitwardhini/l10n/app_localizations.dart';
 
 class ChatScreen extends StatefulWidget {
   final Map<String, dynamic> otherUser;

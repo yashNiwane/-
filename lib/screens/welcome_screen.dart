@@ -138,6 +138,27 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       body: Stack(
         children: [
           // Subtle top gradient for a modern touch (only 20% of screen)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.35,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                      Theme.of(context).scaffoldBackgroundColor,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
           // Language Switcher
           Positioned(
             top: 40,
@@ -159,37 +180,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 },
                 items: const [
                   DropdownMenuItem(
-                    value: Locale('en'),
-                    child: Text('English'),
-                  ),
-                  DropdownMenuItem(
                     value: Locale('mr'),
                     child: Text('मराठी'),
+                  ),
+                  DropdownMenuItem(
+                    value: Locale('en'),
+                    child: Text('English'),
                   ),
                 ],
               ),
             ),
           ),
 
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: MediaQuery.of(context).size.height * 0.35,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Theme.of(context).colorScheme.primary.withOpacity(0.15),
-                    Theme.of(context).scaffoldBackgroundColor,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          
           SafeArea(
             child: Center(
               child: SingleChildScrollView(

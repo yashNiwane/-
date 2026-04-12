@@ -660,7 +660,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'View Profile',
+                      l10n.viewProfile,
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -685,7 +685,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Update Photo',
+                      l10n.updatePhoto,
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -714,7 +714,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'Admin Panel',
+                        l10n.adminPanel,
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -739,7 +739,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Sign Out',
+                      l10n.signOut,
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -1513,10 +1513,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildUpdateFeedCard(Map<String, dynamic> update, bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     final type = update['update_type'] ?? 'update';
     final mediaType = update['media_type'] ?? 'none';
     final createdAt = update['created_at'] != null ? DateTime.parse(update['created_at']) : DateTime.now();
-    final timeAgo = _getTimeAgo(createdAt);
+    final timeAgo = _getTimeAgo(createdAt, context);
     
     Color typeColor;
     IconData typeIcon;
@@ -1647,6 +1648,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildExploreTab(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
         // Premium search bar
