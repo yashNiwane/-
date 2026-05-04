@@ -65,13 +65,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) {
         Navigator.pop(context, true); // Return true to indicate update
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully!')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.profileUpdatedSuccessfully)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating profile: $e')),
+          SnackBar(content: Text('${AppLocalizations.of(context)!.errorUpdatingProfile}: $e')),
         );
       }
     } finally {
@@ -94,7 +94,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Edit Profile',
+          AppLocalizations.of(context)!.editProfile,
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -109,15 +109,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           key: _formKey,
           child: Column(
             children: [
-              _buildTextField('Full Name', _nameController, Icons.person_outline),
+              _buildTextField(AppLocalizations.of(context)!.fullName, _nameController, Icons.person_outline),
               const SizedBox(height: 16),
-              _buildTextField('Phone Number', _phoneController, Icons.phone_outlined, TextInputType.phone),
+              _buildTextField(AppLocalizations.of(context)!.phoneNumber, _phoneController, Icons.phone_outlined, TextInputType.phone),
               const SizedBox(height: 16),
-              _buildTextField('City', _cityController, Icons.location_on_outlined),
+              _buildTextField(AppLocalizations.of(context)!.city, _cityController, Icons.location_on_outlined),
               const SizedBox(height: 16),
-              _buildTextField('Occupation', _occupationController, Icons.work_outline),
+              _buildTextField(AppLocalizations.of(context)!.occupation, _occupationController, Icons.work_outline),
               const SizedBox(height: 16),
-              _buildTextField('Education', _educationController, Icons.school_outlined),
+              _buildTextField(AppLocalizations.of(context)!.education, _educationController, Icons.school_outlined),
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
@@ -137,7 +137,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
                       : Text(
-                          'Save Changes',
+                          AppLocalizations.of(context)!.saveChanges,
                           style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                 ),
@@ -185,7 +185,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
-      validator: (value) => value?.isEmpty == true ? 'Please enter $label' : null,
+      validator: (value) => value?.isEmpty == true ? AppLocalizations.of(context)!.pleaseEnter(label) : null,
     );
   }
 }

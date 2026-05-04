@@ -301,7 +301,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Matched',
+                        AppLocalizations.of(context)!.matched,
                         style: GoogleFonts.poppins(
                           color: Colors.green,
                           fontSize: 12,
@@ -344,7 +344,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _isBlockedByMe ? 'Unblock User' : 'Block User',
+                        _isBlockedByMe ? AppLocalizations.of(context)!.unblockUser : AppLocalizations.of(context)!.blockUser,
                         style: GoogleFonts.poppins(
                           color: _isBlockedByMe ? Colors.black87 : Colors.red,
                         ),
@@ -406,8 +406,8 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Text(
             _isBlockedByMe 
-                ? 'You have blocked this user.' 
-                : 'You cannot reply to this conversation.',
+                ? AppLocalizations.of(context)!.youHaveBlocked 
+                : AppLocalizations.of(context)!.cannotReply,
             style: GoogleFonts.poppins(color: Colors.grey),
           ),
           if (_isBlockedByMe)
@@ -439,7 +439,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            'Start the conversation!',
+            AppLocalizations.of(context)!.startConversation,
             style: GoogleFonts.poppins(
               fontSize: 20,
               fontWeight: FontWeight.w600,
@@ -448,7 +448,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Say hello and get to know each other',
+            AppLocalizations.of(context)!.sayHelloAndGetToKnow,
             style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
           ),
         ],
@@ -476,9 +476,9 @@ class _ChatScreenState extends State<ChatScreen> {
       String label;
       
       if (date.day == now.day && date.month == now.month && date.year == now.year) {
-        label = 'Today';
+        label = AppLocalizations.of(context)!.today;
       } else if (date.day == now.day - 1 && date.month == now.month && date.year == now.year) {
-        label = 'Yesterday';
+        label = AppLocalizations.of(context)!.yesterday;
       } else {
         label = '${date.day}/${date.month}/${date.year}';
       }

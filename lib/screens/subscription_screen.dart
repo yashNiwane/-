@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:hitwardhini/l10n/app_localizations.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -63,7 +64,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       _razorpay.open(options);
     } catch (e) {
       setState(() => _isLoading = false);
-      _showError('Error opening payment gateway: $e');
+      _showError('${AppLocalizations.of(context)!.errorOpeningGateway}: $e');
     }
   }
 
@@ -82,8 +83,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Donation Successful! Access Granted for 1 Year'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.donationSuccessful),
             backgroundColor: Colors.green,
           ),
         );
@@ -91,20 +92,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
-      _showError('Payment successful but failed to update status: $e');
+      _showError('${AppLocalizations.of(context)!.paymentSuccessfulUpdateError}: $e');
     }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
     if (mounted) setState(() => _isLoading = false);
-    _showError('Payment Failed: ${response.message ?? 'Unknown error'}');
+    _showError('${AppLocalizations.of(context)!.paymentFailed}: ${response.message ?? AppLocalizations.of(context)!.unknown}');
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
     if (mounted) setState(() => _isLoading = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('External Wallet: ${response.walletName}'),
+        content: Text('${AppLocalizations.of(context)!.externalWallet}: ${response.walletName}'),
         backgroundColor: Colors.blue,
       ),
     );
@@ -156,7 +157,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Support Our Cause',
+                      AppLocalizations.of(context)!.supportOurCause,
                       style: GoogleFonts.poppins(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -165,7 +166,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Donate to help people of Teli Samaj to grow more.',
+                      AppLocalizations.of(context)!.donateToHelp,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
@@ -181,10 +182,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      _buildBenefitItem(context, Icons.people_outline_rounded, 'View Unlimited Profiles', 'Access thousands of verified profiles.'),
-                      _buildBenefitItem(context, Icons.chat_bubble_outline_rounded, 'Direct Messaging', 'Connect directly with matches.'),
-                      _buildBenefitItem(context, Icons.verified_user_outlined, 'Verified Badge', 'Stand out with a premium badge.'),
-                      _buildBenefitItem(context, Icons.support_agent_rounded, 'Priority Support', 'Get help whenever you need it.'),
+                      _buildBenefitItem(context, Icons.people_outline_rounded, AppLocalizations.of(context)!.viewUnlimitedProfiles, AppLocalizations.of(context)!.viewUnlimitedSubtitle),
+                      _buildBenefitItem(context, Icons.chat_bubble_outline_rounded, AppLocalizations.of(context)!.directMessaging, AppLocalizations.of(context)!.directMessagingSubtitle),
+                      _buildBenefitItem(context, Icons.verified_user_outlined, AppLocalizations.of(context)!.verifiedBadge, AppLocalizations.of(context)!.verifiedBadgeSubtitle),
+                      _buildBenefitItem(context, Icons.support_agent_rounded, AppLocalizations.of(context)!.prioritySupport, AppLocalizations.of(context)!.prioritySupportSubtitle),
                     ],
                   ),
                 ),
@@ -215,7 +216,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Yearly Donation',
+                              AppLocalizations.of(context)!.yearlyDonation,
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
                                 color: Colors.grey,
@@ -238,7 +239,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            'Best Value',
+                            AppLocalizations.of(context)!.bestValue,
                             style: GoogleFonts.poppins(
                               color: Colors.amber[700],
                               fontWeight: FontWeight.w600,
@@ -262,7 +263,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             )
                           : const Icon(Icons.account_balance_wallet_rounded),
                         label: Text(
-                          _isLoading ? 'Processing...' : 'Pay ₹101 via UPI',
+                          _isLoading ? AppLocalizations.of(context)!.processing : AppLocalizations.of(context)!.payViaUpi,
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

@@ -61,7 +61,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           .order('created_at', ascending: false);
       if (mounted) setState(() => _users = List<Map<String, dynamic>>.from(data));
     } catch (e) {
-      _showSnackBar('Error fetching users: $e', Colors.red);
+      _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
     }
   }
 
@@ -124,7 +124,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         'is_paid': !currentStatus,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', id);
-      _showSnackBar(!currentStatus ? 'User marked as paid!' : 'User marked as unpaid', !currentStatus ? Colors.green : Colors.orange);
+      _showSnackBar(!currentStatus ? AppLocalizations.of(context)!.userMarkedPaid : AppLocalizations.of(context)!.userMarkedUnpaid, !currentStatus ? Colors.green : Colors.orange);
       await _fetchAllData();
     } catch (e) {
       _showSnackBar('Error: $e', Colors.red);
@@ -137,7 +137,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         'is_admin': !currentStatus,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', id);
-      _showSnackBar(!currentStatus ? 'Admin access granted!' : 'Admin access revoked', !currentStatus ? Colors.blue : Colors.orange);
+      _showSnackBar(!currentStatus ? AppLocalizations.of(context)!.adminAccessGranted : AppLocalizations.of(context)!.adminAccessRevoked, !currentStatus ? Colors.blue : Colors.orange);
       await _fetchAllData();
     } catch (e) {
       _showSnackBar('Error: $e', Colors.red);
@@ -145,7 +145,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   }
 
   Future<void> _deleteUser(String id, String name) async {
-    final confirmed = await _showConfirmDialog('Delete User', 'Are you sure you want to delete "$name"? This action cannot be undone.');
+    final confirmed = await _showConfirmDialog(AppLocalizations.of(context)!.deleteUser, AppLocalizations.of(context)!.deleteUserConfirm(name));
     if (confirmed == true) {
       try {
         await _supabase.from('saved_profiles').delete().eq('user_id', id);
@@ -155,10 +155,10 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         await _supabase.from('messages').delete().eq('sender_id', id);
         await _supabase.from('messages').delete().eq('receiver_id', id);
         await _supabase.from('profiles').delete().eq('id', id);
-        _showSnackBar('User deleted successfully', Colors.green);
+        _showSnackBar(AppLocalizations.of(context)!.userDeletedSuccessfully, Colors.green);
         await _fetchAllData();
       } catch (e) {
-        _showSnackBar('Error deleting user: $e', Colors.red);
+        _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
       }
     }
   }
@@ -369,7 +369,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                                 'media_url': mediaUrl,
                               });
                               Navigator.pop(context);
-                              _showSnackBar('Post created successfully!', Colors.green);
+                              _showSnackBar(AppLocalizations.of(context)!.postCreatedSuccessfully, Colors.green);
                               await _fetchUpdates();
                             } catch (e) {
                               _showSnackBar('Error: $e', Colors.red);
@@ -455,17 +455,17 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
       await _supabase.storage.from('updates').uploadBinary(fileName, bytes);
       return _supabase.storage.from('updates').getPublicUrl(fileName);
     } catch (e) {
-      _showSnackBar('Upload failed: $e', Colors.red);
+      _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
       return null;
     }
   }
 
   Future<void> _deleteUpdate(String id) async {
-    final confirmed = await _showConfirmDialog('Delete Post', 'Are you sure you want to delete this post?');
+    final confirmed = await _showConfirmDialog(AppLocalizations.of(context)!.deletePost, AppLocalizations.of(context)!.deletePostConfirm);
     if (confirmed == true) {
       try {
         await _supabase.from('updates').delete().eq('id', id);
-        _showSnackBar('Post deleted', Colors.green);
+        _showSnackBar(AppLocalizations.of(context)!.postDeleted, Colors.green);
         await _fetchUpdates();
       } catch (e) {
         _showSnackBar('Error: $e', Colors.red);
@@ -520,11 +520,11 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                   'blocked_by': _supabase.auth.currentUser!.id,
                 });
                 Navigator.pop(context);
-                _showSnackBar('User blocked!', Colors.green);
+                _showSnackBar(AppLocalizations.of(context)!.userBlocked, Colors.green);
                 await _fetchBlockedUsers();
               } catch (e) {
                 if (e.toString().contains('duplicate')) {
-                  _showSnackBar('Email already blocked', Colors.orange);
+                  _showSnackBar(AppLocalizations.of(context)!.emailAlreadyBlocked, Colors.orange);
                 } else {
                   _showSnackBar('Error: $e', Colors.red);
                 }
@@ -539,11 +539,11 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   }
 
   Future<void> _unblockUser(String id, String email) async {
-    final confirmed = await _showConfirmDialog('Unblock User', 'Unblock $email?');
+    final confirmed = await _showConfirmDialog(AppLocalizations.of(context)!.unblock, AppLocalizations.of(context)!.unblockUserConfirm(email));
     if (confirmed == true) {
       try {
         await _supabase.from('blocked_users').delete().eq('id', id);
-        _showSnackBar('User unblocked', Colors.green);
+        _showSnackBar(AppLocalizations.of(context)!.userUnblocked, Colors.green);
         await _fetchBlockedUsers();
       } catch (e) {
         _showSnackBar('Error: $e', Colors.red);
@@ -553,6 +553,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).colorScheme.primary;
 
@@ -578,11 +579,11 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           unselectedLabelColor: Colors.grey,
           isScrollable: true,
           labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13),
-          tabs: const [
-            Tab(text: 'Dashboard'),
-            Tab(text: 'Users'),
-            Tab(text: 'Posts'),
-            Tab(text: 'Blocked'),
+          tabs: [
+            Tab(text: l10n.dashboard),
+            Tab(text: l10n.users),
+            Tab(text: l10n.posts),
+            Tab(text: l10n.blocked),
           ],
         ),
       ),
@@ -710,7 +711,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(color: isPaid ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                        child: Text(isPaid ? 'Paid' : 'Free', style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: isPaid ? Colors.green : Colors.orange)),
+                        child: Text(isPaid ? AppLocalizations.of(context)!.paid : AppLocalizations.of(context)!.free, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: isPaid ? Colors.green : Colors.orange)),
                       ),
                     ],
                   ),
@@ -755,10 +756,10 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                   }
                 },
                 itemBuilder: (context) => [
-                  PopupMenuItem(value: 'toggle_paid', child: Row(children: [Icon(isPaid ? Icons.money_off_rounded : Icons.attach_money_rounded, color: isPaid ? Colors.orange : Colors.green, size: 20), const SizedBox(width: 10), Expanded(child: Text(isPaid ? 'Mark Unpaid' : 'Mark Paid', overflow: TextOverflow.ellipsis))])),
-                  PopupMenuItem(value: 'toggle_admin', child: Row(children: [Icon(isAdmin ? Icons.shield_outlined : Icons.shield_rounded, color: isAdmin ? Colors.grey : Colors.blue, size: 20), const SizedBox(width: 10), Expanded(child: Text(isAdmin ? 'Remove Admin' : 'Make Admin', overflow: TextOverflow.ellipsis))])),
+                  PopupMenuItem(value: 'toggle_paid', child: Row(children: [Icon(isPaid ? Icons.money_off_rounded : Icons.attach_money_rounded, color: isPaid ? Colors.orange : Colors.green, size: 20), const SizedBox(width: 10), Expanded(child: Text(isPaid ? AppLocalizations.of(context)!.markUnpaid : AppLocalizations.of(context)!.markPaid, overflow: TextOverflow.ellipsis))])),
+                  PopupMenuItem(value: 'toggle_admin', child: Row(children: [Icon(isAdmin ? Icons.shield_outlined : Icons.shield_rounded, color: isAdmin ? Colors.grey : Colors.blue, size: 20), const SizedBox(width: 10), Expanded(child: Text(isAdmin ? AppLocalizations.of(context)!.removeAdmin : AppLocalizations.of(context)!.makeAdmin, overflow: TextOverflow.ellipsis))])),
                   const PopupMenuDivider(),
-                  PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete_rounded, color: Colors.red, size: 20), const SizedBox(width: 10), Expanded(child: Text('Delete', style: TextStyle(color: Colors.red[700]), overflow: TextOverflow.ellipsis))])),
+                  PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete_rounded, color: Colors.red, size: 20), const SizedBox(width: 10), Expanded(child: Text(AppLocalizations.of(context)!.delete, style: TextStyle(color: Colors.red[700]), overflow: TextOverflow.ellipsis))])),
                 ],
               ),
           ],

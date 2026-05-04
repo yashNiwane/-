@@ -169,7 +169,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       } else if (diff.inMinutes > 0) {
         return '${diff.inMinutes}m';
       } else {
-        return 'Now';
+        return AppLocalizations.of(context)!.justNow;
       }
     } catch (_) {
       return '';
@@ -191,7 +191,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Messages',
+          AppLocalizations.of(context)!.messages,
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : Colors.black87,
@@ -239,7 +239,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             ),
             const SizedBox(height: 32),
             Text(
-              'No Matches Yet',
+              AppLocalizations.of(context)!.noMatchesYet,
               style: GoogleFonts.poppins(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -248,7 +248,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'When you or another person accepts\nan interest, you can start chatting!',
+              AppLocalizations.of(context)!.startChatting,
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 color: Colors.grey,
@@ -399,9 +399,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                           Expanded(
                             child: Text(
                               lastMessage != null
-                                  ? (lastMessage['sender_id'] == _currentUserId ? 'You: ' : '') +
+                                  ? (lastMessage['sender_id'] == _currentUserId ? AppLocalizations.of(context)!.you : '') +
                                     (lastMessage['content'] ?? '')
-                                  : 'Say hello! 👋',
+                                  : AppLocalizations.of(context)!.sayHello,
                               style: GoogleFonts.poppins(
                                 color: hasUnread 
                                     ? (isDark ? Colors.white : Colors.black87)

@@ -295,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             _savedProfileIds.remove(profileId);
           });
         }
-        _showSnackBar('Removed from saved', Colors.grey);
+        _showSnackBar(AppLocalizations.of(context)!.removedFromSaved, Colors.grey);
       } else {
         await _supabase.from('saved_profiles').insert({
           'user_id': userId,
@@ -306,11 +306,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             _savedProfileIds.add(profileId);
           });
         }
-        _showSnackBar('Profile saved!', Colors.green);
+        _showSnackBar(AppLocalizations.of(context)!.profileSavedMsg, Colors.green);
       }
       await _fetchSavedProfiles();
     } catch (e) {
-      _showSnackBar('Error: $e', Colors.red);
+      _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
     }
   }
 
@@ -327,10 +327,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _sentInterestIds.add(receiverId);
         });
       }
-      _showSnackBar('Interest sent!', Colors.green);
+      _showSnackBar(AppLocalizations.of(context)!.interestSentMsg, Colors.green);
       await _fetchInterests();
     } catch (e) {
-      _showSnackBar('Error: $e', Colors.red);
+      _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
     }
   }
 
@@ -341,11 +341,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', interestId);
       
-      _showSnackBar(status == 'accepted' ? 'Interest accepted!' : 'Interest declined', 
+      _showSnackBar(status == 'accepted' ? AppLocalizations.of(context)!.interestAccepted : AppLocalizations.of(context)!.interestDeclined, 
           status == 'accepted' ? Colors.green : Colors.grey);
       await _fetchInterests();
     } catch (e) {
-      _showSnackBar('Error: $e', Colors.red);
+      _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
     }
   }
 
@@ -397,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'New message from ${senderProfile['full_name']}',
+                        AppLocalizations.of(context)!.newMessageFrom(senderProfile['full_name'] ?? AppLocalizations.of(context)!.user),
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(
@@ -414,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 4),
             action: SnackBarAction(
-              label: 'View',
+              label: AppLocalizations.of(context)!.view,
               textColor: Colors.white,
               onPressed: () {
                 Navigator.push(
@@ -451,9 +451,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         }).eq('id', userId);
         
         await _initializeData();
-        _showSnackBar('Profile photo updated!', Colors.green);
+        _showSnackBar(AppLocalizations.of(context)!.profilePhotoUpdated, Colors.green);
       } catch (e) {
-        _showSnackBar('Error: $e', Colors.red);
+        _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
       }
     }
   }
@@ -1584,10 +1584,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   String _getTimeAgo(DateTime dateTime, BuildContext context) {
     final difference = DateTime.now().difference(dateTime);
-    if (difference.inDays > 7) return '${(difference.inDays / 7).floor()}w ago';
-    if (difference.inDays > 0) return '${difference.inDays}d ago';
-    if (difference.inHours > 0) return '${difference.inHours}h ago';
-    if (difference.inMinutes > 0) return '${difference.inMinutes}m ago';
+    if (difference.inDays > 7) return '${(difference.inDays / 7).floor()}w';
+    if (difference.inDays > 0) return '${difference.inDays}d';
+    if (difference.inHours > 0) return '${difference.inHours}h';
+    if (difference.inMinutes > 0) return '${difference.inMinutes}m';
     return AppLocalizations.of(context)!.justNow;
   }
 
