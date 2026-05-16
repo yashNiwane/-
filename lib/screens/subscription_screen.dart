@@ -38,7 +38,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       'key': 'rzp_test_S49rSEiIf7Pt6S',
       'amount': 10100, // Amount in paise (₹101 = 10100 paise)
       'currency': 'INR',
-      'name': 'Hitwardhini',
+      'name': 'Runanubandh',
       'description': 'Yearly Donation',
       'retry': {
         'enabled': true,

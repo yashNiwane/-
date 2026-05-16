@@ -9,7 +9,7 @@ class AppLocalizationsMr extends AppLocalizations {
   AppLocalizationsMr([String locale = 'mr']) : super(locale);
 
   @override
-  String get appTitle => 'हितवर्धिनी';
+  String get appTitle => 'ऋणानुबंध';
 
   @override
   String get findProperMatches => 'योग्य जोडीदार शोधा';

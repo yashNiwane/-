@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -68,7 +67,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.block_rounded, color: Colors.red, size: 28),
@@ -150,7 +149,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                       Theme.of(context).scaffoldBackgroundColor,
                     ],
                   ),
@@ -166,7 +165,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: DropdownButton<Locale>(
@@ -205,18 +204,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Logo
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                            ),
-                            child: Icon(
-                              Icons.diversity_1_rounded, 
-                              size: 64, 
-                              color: Theme.of(context).colorScheme.primary
-                            ),
+                          Image.asset(
+                            'assets/logo.png',
+                            height: 112,
+                            fit: BoxFit.contain,
+                            semanticLabel: AppLocalizations.of(context)!.appTitle,
                           ),
                           const SizedBox(height: 32),
                           
