@@ -9,17 +9,18 @@ import 'package:hitwardhini/screens/profile_creation_screen.dart';
 import 'package:hitwardhini/screens/subscription_screen.dart';
 import 'package:hitwardhini/screens/edit_profile_screen.dart';
 import 'package:hitwardhini/screens/admin_screen.dart';
+import 'package:hitwardhini/screens/password_preferences_screen.dart';
 import 'package:hitwardhini/providers/locale_provider.dart';
 import 'package:hitwardhini/l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await Supabase.initialize(
     url: 'https://vqssydeyzhdoazulgzpm.supabase.co',
     anonKey: 'sb_publishable_SBglOlmrRU_jhtdtZ1yzZA_5eX61BPo',
   );
-  
+
   runApp(
     ChangeNotifierProvider(
       create: (context) => LocaleProvider(),
@@ -45,11 +46,8 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('mr'),
-        Locale('en'),
-      ],
-      
+      supportedLocales: const [Locale('mr'), Locale('en')],
+
       theme: ThemeData(
         brightness: Brightness.light,
         scaffoldBackgroundColor: const Color(0xFFFDFCFB),
@@ -67,7 +65,9 @@ class MyApp extends StatelessWidget {
 
       darkTheme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF1E1B4B), // Deep Blue for contrast
+        scaffoldBackgroundColor: const Color(
+          0xFF1E1B4B,
+        ), // Deep Blue for contrast
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFFFA5C5C),
           brightness: Brightness.dark,
@@ -81,7 +81,7 @@ class MyApp extends StatelessWidget {
       ),
 
       themeMode: ThemeMode.system,
-      
+
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
@@ -92,12 +92,18 @@ class MyApp extends StatelessWidget {
         '/admin': (context) => const AdminScreen(),
       },
       onGenerateRoute: (settings) {
+        if (settings.name == '/password-preferences') {
+          final args = settings.arguments as Map<String, dynamic>? ?? {};
+          final hasProfile = (args['hasProfile'] as bool?) ?? false;
+          return MaterialPageRoute(
+            builder: (context) =>
+                PasswordPreferencesScreen(hasProfile: hasProfile),
+          );
+        }
         if (settings.name == '/edit-profile') {
           final args = settings.arguments as Map<String, dynamic>?;
           return MaterialPageRoute(
-            builder: (context) => EditProfileScreen(
-              currentData: args ?? {},
-            ),
+            builder: (context) => EditProfileScreen(currentData: args ?? {}),
           );
         }
         return null;

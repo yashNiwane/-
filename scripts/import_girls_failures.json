@@ -1,0 +1,292 @@
+[
+  {
+    "row": 2,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "deepikalagad8027"
+  },
+  {
+    "row": 3,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0024721"
+  },
+  {
+    "row": 4,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "nikitaarunrath9085"
+  },
+  {
+    "row": 5,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0044168"
+  },
+  {
+    "row": 6,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0052393"
+  },
+  {
+    "row": 7,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "sanjanavasantm3442"
+  },
+  {
+    "row": 8,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0072889"
+  },
+  {
+    "row": 9,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0082889"
+  },
+  {
+    "row": 10,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "sakshichopade7535"
+  },
+  {
+    "row": 11,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0103014"
+  },
+  {
+    "row": 12,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "pallavisureshr5444"
+  },
+  {
+    "row": 13,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0126284"
+  },
+  {
+    "row": 14,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0130517"
+  },
+  {
+    "row": 15,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0141307"
+  },
+  {
+    "row": 16,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0154143"
+  },
+  {
+    "row": 17,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0169724"
+  },
+  {
+    "row": 18,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0175831"
+  },
+  {
+    "row": 19,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0185899"
+  },
+  {
+    "row": 20,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0191638"
+  },
+  {
+    "row": 21,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0209846"
+  },
+  {
+    "row": 22,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0218937"
+  },
+  {
+    "row": 23,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "nikitaravindra6715"
+  },
+  {
+    "row": 24,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0230151"
+  },
+  {
+    "row": 25,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "meenababanraos0797"
+  },
+  {
+    "row": 26,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0259586"
+  },
+  {
+    "row": 27,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0264051"
+  },
+  {
+    "row": 28,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0278638"
+  },
+  {
+    "row": 29,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0282501"
+  },
+  {
+    "row": 30,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0292697"
+  },
+  {
+    "row": 31,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "divyatararatho6407"
+  },
+  {
+    "row": 32,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0312953"
+  },
+  {
+    "row": 33,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0327111"
+  },
+  {
+    "row": 34,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0338333"
+  },
+  {
+    "row": 35,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "priyagajananka2179"
+  },
+  {
+    "row": 36,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0350888"
+  },
+  {
+    "row": 37,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0367375"
+  },
+  {
+    "row": 38,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0375496"
+  },
+  {
+    "row": 39,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "vaishnavidines0900"
+  },
+  {
+    "row": 40,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0390374"
+  },
+  {
+    "row": 41,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0402638"
+  },
+  {
+    "row": 42,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0415899"
+  },
+  {
+    "row": 43,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0421958"
+  },
+  {
+    "row": 44,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "poojaamarratho8333"
+  },
+  {
+    "row": 45,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0441111"
+  },
+  {
+    "row": 46,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0458996"
+  },
+  {
+    "row": 47,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0469657"
+  },
+  {
+    "row": 48,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0479310"
+  },
+  {
+    "row": 49,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0487014"
+  },
+  {
+    "row": 50,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0495121"
+  },
+  {
+    "row": 51,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0500187"
+  },
+  {
+    "row": 52,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0518929"
+  },
+  {
+    "row": 53,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0523172"
+  },
+  {
+    "row": 54,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "pallavisureshc5444"
+  },
+  {
+    "row": 55,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0548937"
+  },
+  {
+    "row": 56,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0550781"
+  },
+  {
+    "row": 57,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "vijayavilasrao6789"
+  },
+  {
+    "row": 58,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0576966"
+  },
+  {
+    "row": 59,
+    "error": "Profile upsert failed: 400 {\"code\":\"42P10\",\"details\":null,\"hint\":null,\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}",
+    "login_id": "girl0588284"
+  }
+]

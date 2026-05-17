@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hitwardhini/l10n/app_localizations.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,7 +17,18 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  static const List<String> _biodataAllowedExtensions = [
+    'pdf',
+    'doc',
+    'docx',
+    'jpg',
+    'jpeg',
+    'png',
+    'webp',
+  ];
+
   final _supabase = Supabase.instance.client;
   Map<String, dynamic>? _myProfile;
   List<Map<String, dynamic>> _profiles = [];
@@ -27,10 +39,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Set<String> _sentInterestIds = {};
   bool _isLoading = true;
   String _searchQuery = '';
+  String? _adminExploreGenderFilter;
   RangeValues _ageRange = const RangeValues(18, 60);
   int _currentIndex = 0;
   late TabController _tabController;
-  
+
   // Realtime subscriptions
   RealtimeChannel? _profilesChannel;
   RealtimeChannel? _savedChannel;
@@ -38,6 +51,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   RealtimeChannel? _messagesChannel;
   int _unreadMessagesCount = 0;
   List<Map<String, dynamic>> _updates = [];
+
+  bool _isPaymentExempt(Map<String, dynamic>? profile) {
+    if (profile == null) return false;
+    return (profile['payment_exempt'] == true) ||
+        (profile['created_by_admin'] == true);
+  }
 
   @override
   void initState() {
@@ -62,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   void _setupRealtimeSubscriptions() {
     final userId = _supabase.auth.currentUser?.id;
-    
+
     // Listen for current user's profile changes (subscription status)
     _profilesChannel = _supabase
         .channel('my_profile_changes')
@@ -70,11 +89,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           event: PostgresChangeEvent.update,
           schema: 'public',
           table: 'profiles',
-          filter: userId != null ? PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'id',
-            value: userId,
-          ) : null,
+          filter: userId != null
+              ? PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'id',
+                  value: userId,
+                )
+              : null,
           callback: (payload) {
             debugPrint('My profile changed: ${payload.eventType}');
             _checkSubscriptionStatus();
@@ -144,21 +165,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       return;
     }
 
-    final myProfileData = await _supabase.from('profiles').select().eq('id', user.id).maybeSingle();
-    
+    final myProfileData = await _supabase
+        .from('profiles')
+        .select()
+        .eq('id', user.id)
+        .maybeSingle();
+
     if (mounted) {
       if (myProfileData == null) {
-        Navigator.of(context).pushReplacementNamed('/profile-creation');
+        await _supabase.auth.signOut();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Profile not found. Please contact admin. New profile creation is disabled.',
+            ),
+          ),
+        );
+        Navigator.of(context).pushReplacementNamed('/');
         return;
       }
 
       bool isPaid = myProfileData['is_paid'] ?? false;
+      final exempt = _isPaymentExempt(myProfileData);
       if (isPaid && myProfileData['subscription_expiry'] != null) {
         final expiry = DateTime.parse(myProfileData['subscription_expiry']);
         if (expiry.isBefore(DateTime.now())) isPaid = false;
       }
 
-      if (!isPaid) {
+      if (!isPaid && !exempt) {
         Navigator.of(context).pushReplacementNamed('/subscription');
         return;
       }
@@ -172,17 +207,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final user = _supabase.auth.currentUser;
     if (user == null) return;
 
-    final data = await _supabase.from('profiles').select('is_paid, subscription_expiry').eq('id', user.id).maybeSingle();
-    
+    final data = await _supabase
+        .from('profiles')
+        .select('is_paid, subscription_expiry')
+        .eq('id', user.id)
+        .maybeSingle();
+
     if (data != null && mounted) {
       bool isPaid = data['is_paid'] ?? false;
-      
+      final exempt = _isPaymentExempt(data);
+
       if (isPaid && data['subscription_expiry'] != null) {
         final expiry = DateTime.parse(data['subscription_expiry']);
         if (expiry.isBefore(DateTime.now())) isPaid = false;
       }
 
-      if (!isPaid) {
+      if (!isPaid && !exempt) {
         // Subscription expired - redirect to payment page
         Navigator.of(context).pushReplacementNamed('/subscription');
       }
@@ -190,14 +230,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _fetchAllData() async {
-    await Future.wait([
-      _fetchProfiles(),
-      _fetchSavedProfiles(),
-      _fetchInterests(),
-      _loadUnreadMessagesCount(),
-      _fetchUpdates(),
-    ]);
-    if (mounted) setState(() => _isLoading = false);
+    try {
+      await Future.wait([
+        _fetchProfiles(),
+        _fetchSavedProfiles(),
+        _fetchInterests(),
+        _loadUnreadMessagesCount(),
+        _fetchUpdates(),
+      ]);
+    } catch (e) {
+      debugPrint('Error loading dashboard data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load some data. Please refresh. ($e)'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _fetchUpdates() async {
@@ -208,7 +261,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           .eq('is_active', true)
           .order('created_at', ascending: false)
           .limit(10);
-      if (mounted) setState(() => _updates = List<Map<String, dynamic>>.from(data));
+      if (mounted)
+        setState(() => _updates = List<Map<String, dynamic>>.from(data));
     } catch (e) {
       debugPrint('Error fetching updates: $e');
     }
@@ -216,29 +270,63 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Future<void> _fetchProfiles() async {
     final userId = _supabase.auth.currentUser!.id;
-    
+    final isAdmin = _myProfile?['is_admin'] == true;
+
     // Determine opposite gender for matching
     final myGender = _myProfile?['gender'];
     String? targetGender;
-    if (myGender == 'Male') {
-      targetGender = 'Female';
-    } else if (myGender == 'Female') {
-      targetGender = 'Male';
+    if (!isAdmin) {
+      if (myGender == 'Male') {
+        targetGender = 'Female';
+      } else if (myGender == 'Female') {
+        targetGender = 'Male';
+      }
     }
-    
-    var query = _supabase
-        .from('profiles')
-        .select()
-        .neq('id', userId)
-        .eq('is_paid', true);
-    
-    // Only filter by gender if user has set their gender
+
+    dynamic query;
+    if (isAdmin) {
+      // Admin should see all user profiles (both girls and boys), but not admin accounts.
+      query = _supabase
+          .from('profiles')
+          .select()
+          .neq('id', userId)
+          .eq('is_admin', false);
+    } else {
+      // Normal users should never see admin profiles.
+      query = _supabase
+          .from('profiles')
+          .select()
+          .neq('id', userId)
+          .eq('is_admin', false)
+          .or(
+            'is_paid.eq.true,payment_exempt.eq.true,created_by_admin.eq.true',
+          );
+    }
+
     if (targetGender != null) {
       query = query.eq('gender', targetGender);
     }
-    
-    final data = await query.order('created_at', ascending: false);
-    
+
+    List<dynamic> data;
+    try {
+      data = await query.order('created_at', ascending: false);
+    } catch (e) {
+      // Backward-compat: if new columns are not migrated yet, fallback to legacy paid-only query.
+      debugPrint(
+        'Enhanced profile filter failed, falling back to legacy query: $e',
+      );
+      dynamic fallback = _supabase
+          .from('profiles')
+          .select()
+          .neq('id', userId)
+          .eq('is_admin', false)
+          .eq('is_paid', true);
+      if (targetGender != null) {
+        fallback = fallback.eq('gender', targetGender);
+      }
+      data = await fallback.order('created_at', ascending: false);
+    }
+
     if (mounted) {
       setState(() => _profiles = List<Map<String, dynamic>>.from(data));
     }
@@ -250,43 +338,48 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         .from('saved_profiles')
         .select('*, saved_profile:saved_profile_id(*)')
         .eq('user_id', userId);
-    
+
     if (mounted) {
       setState(() {
         _savedProfiles = List<Map<String, dynamic>>.from(data);
-        _savedProfileIds = _savedProfiles.map((e) => e['saved_profile_id'] as String).toSet();
+        _savedProfileIds = _savedProfiles
+            .map((e) => e['saved_profile_id'] as String)
+            .toSet();
       });
     }
   }
 
   Future<void> _fetchInterests() async {
     final userId = _supabase.auth.currentUser!.id;
-    
+
     final sent = await _supabase
         .from('interests')
         .select('*, receiver:receiver_id(*)')
         .eq('sender_id', userId);
-    
+
     final received = await _supabase
         .from('interests')
         .select('*, sender:sender_id(*)')
         .eq('receiver_id', userId);
-    
+
     if (mounted) {
       setState(() {
         _sentInterests = List<Map<String, dynamic>>.from(sent);
         _receivedInterests = List<Map<String, dynamic>>.from(received);
-        _sentInterestIds = _sentInterests.map((e) => e['receiver_id'] as String).toSet();
+        _sentInterestIds = _sentInterests
+            .map((e) => e['receiver_id'] as String)
+            .toSet();
       });
     }
   }
 
   Future<void> _toggleSaveProfile(String profileId) async {
     final userId = _supabase.auth.currentUser!.id;
-    
+
     try {
       if (_savedProfileIds.contains(profileId)) {
-        await _supabase.from('saved_profiles')
+        await _supabase
+            .from('saved_profiles')
             .delete()
             .eq('user_id', userId)
             .eq('saved_profile_id', profileId);
@@ -295,7 +388,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             _savedProfileIds.remove(profileId);
           });
         }
-        _showSnackBar(AppLocalizations.of(context)!.removedFromSaved, Colors.grey);
+        _showSnackBar(
+          AppLocalizations.of(context)!.removedFromSaved,
+          Colors.grey,
+        );
       } else {
         await _supabase.from('saved_profiles').insert({
           'user_id': userId,
@@ -306,17 +402,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             _savedProfileIds.add(profileId);
           });
         }
-        _showSnackBar(AppLocalizations.of(context)!.profileSavedMsg, Colors.green);
+        _showSnackBar(
+          AppLocalizations.of(context)!.profileSavedMsg,
+          Colors.green,
+        );
       }
       await _fetchSavedProfiles();
     } catch (e) {
-      _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
+      _showSnackBar(
+        AppLocalizations.of(context)!.errorMsg(e.toString()),
+        Colors.red,
+      );
     }
   }
 
   Future<void> _sendInterest(String receiverId) async {
     final userId = _supabase.auth.currentUser!.id;
-    
+    if (receiverId == userId) {
+      _showSnackBar("You can't send interest to yourself.", Colors.orange);
+      return;
+    }
+
     try {
       await _supabase.from('interests').insert({
         'sender_id': userId,
@@ -327,25 +433,41 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _sentInterestIds.add(receiverId);
         });
       }
-      _showSnackBar(AppLocalizations.of(context)!.interestSentMsg, Colors.green);
+      _showSnackBar(
+        AppLocalizations.of(context)!.interestSentMsg,
+        Colors.green,
+      );
       await _fetchInterests();
     } catch (e) {
-      _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
+      _showSnackBar(
+        AppLocalizations.of(context)!.errorMsg(e.toString()),
+        Colors.red,
+      );
     }
   }
 
   Future<void> _updateInterestStatus(String interestId, String status) async {
     try {
-      await _supabase.from('interests').update({
-        'status': status,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', interestId);
-      
-      _showSnackBar(status == 'accepted' ? AppLocalizations.of(context)!.interestAccepted : AppLocalizations.of(context)!.interestDeclined, 
-          status == 'accepted' ? Colors.green : Colors.grey);
+      await _supabase
+          .from('interests')
+          .update({
+            'status': status,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', interestId);
+
+      _showSnackBar(
+        status == 'accepted'
+            ? AppLocalizations.of(context)!.interestAccepted
+            : AppLocalizations.of(context)!.interestDeclined,
+        status == 'accepted' ? Colors.green : Colors.grey,
+      );
       await _fetchInterests();
     } catch (e) {
-      _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
+      _showSnackBar(
+        AppLocalizations.of(context)!.errorMsg(e.toString()),
+        Colors.red,
+      );
     }
   }
 
@@ -357,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           .select()
           .eq('receiver_id', userId)
           .eq('is_read', false);
-      
+
       if (mounted) {
         setState(() {
           _unreadMessagesCount = result.length;
@@ -376,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           .select('full_name')
           .eq('id', message['sender_id'])
           .single();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -388,7 +510,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     color: Colors.white.withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 16),
+                  child: const Icon(
+                    Icons.chat_bubble_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -397,7 +523,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        AppLocalizations.of(context)!.newMessageFrom(senderProfile['full_name'] ?? AppLocalizations.of(context)!.user),
+                        AppLocalizations.of(context)!.newMessageFrom(
+                          senderProfile['full_name'] ??
+                              AppLocalizations.of(context)!.user,
+                        ),
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(
@@ -419,7 +548,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ConversationsScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const ConversationsScreen(),
+                  ),
                 );
               },
             ),
@@ -432,37 +563,69 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _updateProfilePhoto() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
-    
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Take Profile Photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Choose from Gallery / Album'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final image = await ImagePicker().pickImage(source: source);
+
     if (image != null) {
       final file = File(image.path);
       final userId = _supabase.auth.currentUser!.id;
       final fileExt = image.path.split('.').last;
-      final fileName = '${DateTime.now().toIso8601String()}_profile_$userId.$fileExt';
-      
+      final fileName =
+          '${DateTime.now().toIso8601String()}_profile_$userId.$fileExt';
+
       try {
         await _supabase.storage.from('avatars').upload(fileName, file);
-        final imageUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
-        
-        await _supabase.from('profiles').update({
-          'profile_photo_url': imageUrl,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', userId);
-        
+        final imageUrl = _supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+
+        await _supabase
+            .from('profiles')
+            .update({
+              'profile_photo_url': imageUrl,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', userId);
+
         await _initializeData();
-        _showSnackBar(AppLocalizations.of(context)!.profilePhotoUpdated, Colors.green);
+        _showSnackBar(
+          AppLocalizations.of(context)!.profilePhotoUpdated,
+          Colors.green,
+        );
       } catch (e) {
-        _showSnackBar(AppLocalizations.of(context)!.errorMsg(e.toString()), Colors.red);
+        _showSnackBar(
+          AppLocalizations.of(context)!.errorMsg(e.toString()),
+          Colors.red,
+        );
       }
     }
   }
 
   void _showSnackBar(String message, Color color) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: color),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
     }
   }
 
@@ -471,24 +634,106 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final dob = DateTime.parse(dateOfBirth);
     final now = DateTime.now();
     int age = now.year - dob.year;
-    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+    if (now.month < dob.month ||
+        (now.month == dob.month && now.day < dob.day)) {
       age--;
     }
     return age;
   }
 
   List<Map<String, dynamic>> get _filteredProfiles {
-    return _profiles.where((profile) {
+    final isAdmin = _myProfile?['is_admin'] == true;
+    bool matchesFilters(Map<String, dynamic> profile) {
       final name = (profile['full_name'] ?? '').toLowerCase();
       final city = (profile['city'] ?? '').toLowerCase();
       final query = _searchQuery.toLowerCase();
       final age = _calculateAge(profile['date_of_birth']);
-      
+      final gender = (profile['gender'] ?? '').toString();
+
       final matchesSearch = name.contains(query) || city.contains(query);
       final matchesAge = age >= _ageRange.start && age <= _ageRange.end;
-      
-      return matchesSearch && matchesAge;
-    }).toList();
+      final matchesAdminGender =
+          !isAdmin ||
+          _adminExploreGenderFilter == null ||
+          _adminExploreGenderFilter == gender;
+
+      return matchesSearch && matchesAge && matchesAdminGender;
+    }
+
+    final filtered = _profiles.where(matchesFilters).toList();
+    final myProfile = _myProfile;
+    if (myProfile != null && matchesFilters(myProfile)) {
+      return [myProfile, ...filtered];
+    }
+    return filtered;
+  }
+
+  Future<void> _updateBiodata() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Take Biodata Photo'),
+              onTap: () => Navigator.pop(context, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.upload_file_rounded),
+              title: const Text('Choose Biodata File'),
+              onTap: () => Navigator.pop(context, 'file'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    File? file;
+    if (action == 'camera') {
+      final image = await ImagePicker().pickImage(source: ImageSource.camera);
+      if (image == null) return;
+      file = File(image.path);
+    } else if (action == 'file') {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: _biodataAllowedExtensions,
+      );
+      final path = picked?.files.single.path;
+      if (path == null) return;
+      file = File(path);
+    } else {
+      return;
+    }
+
+    final userId = _supabase.auth.currentUser!.id;
+    final fileExt = file.path.split('.').last;
+    final fileName =
+        '${DateTime.now().toIso8601String()}_biodata_$userId.$fileExt';
+
+    try {
+      await _supabase.storage.from('documents').upload(fileName, file);
+      final biodataUrl = _supabase.storage
+          .from('documents')
+          .getPublicUrl(fileName);
+
+      await _supabase
+          .from('profiles')
+          .update({
+            'biodata_url': biodataUrl,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', userId);
+
+      await _initializeData();
+      _showSnackBar('Biodata updated successfully.', Colors.green);
+    } catch (e) {
+      _showSnackBar(
+        AppLocalizations.of(context)!.errorMsg(e.toString()),
+        Colors.red,
+      );
+    }
   }
 
   @override
@@ -504,7 +749,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF1E1B4B) : const Color(0xFFFDFCFB),
+      backgroundColor: isDark
+          ? const Color(0xFF1E1B4B)
+          : const Color(0xFFFDFCFB),
       appBar: _buildAppBar(isDark, primaryColor),
       body: TabBarView(
         controller: _tabController,
@@ -565,7 +812,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   onTap: () async {
                     await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const ConversationsScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const ConversationsScreen(),
+                      ),
                     );
                     _loadUnreadMessagesCount();
                   },
@@ -581,7 +830,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   right: 2,
                   top: 2,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFFFF4757), Color(0xFFFF3742)],
@@ -597,7 +849,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ],
                     ),
                     child: Text(
-                      _unreadMessagesCount > 99 ? '99+' : '$_unreadMessagesCount',
+                      _unreadMessagesCount > 99
+                          ? '99+'
+                          : '$_unreadMessagesCount',
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 10,
@@ -611,14 +865,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
         if (_currentIndex == 1)
           IconButton(
-            icon: Icon(Icons.filter_list_rounded, color: isDark ? Colors.white70 : Colors.black54),
+            icon: Icon(
+              Icons.filter_list_rounded,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
             onPressed: () => _showFilterSheet(isDark, primaryColor),
           ),
         Padding(
           padding: const EdgeInsets.only(right: 16),
           child: PopupMenuButton<String>(
             offset: const Offset(0, 50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
             elevation: 8,
             shadowColor: Colors.black.withOpacity(0.1),
@@ -627,27 +886,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 _showProfileBottomSheet(isDark, primaryColor);
               } else if (value == 'update_photo') {
                 await _updateProfilePhoto();
-              } else if (value == 'admin_panel') {
-                Navigator.of(context).pushNamed('/admin');
+              } else if (value == 'update_biodata') {
+                await _updateBiodata();
               } else if (value == 'logout') {
                 await _supabase.auth.signOut();
                 if (mounted) Navigator.of(context).pushReplacementNamed('/');
               }
             },
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: primaryColor.withOpacity(0.1),
-              backgroundImage: _myProfile?['profile_photo_url'] != null
-                  ? NetworkImage(_myProfile!['profile_photo_url'])
-                  : null,
-              child: _myProfile?['profile_photo_url'] == null
-                  ? Icon(Icons.person, size: 20, color: primaryColor)
-                  : null,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.more_vert_rounded,
+                size: 20,
+                color: primaryColor,
+              ),
             ),
             itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'view_profile',
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -656,7 +921,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         color: primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.person_outline_rounded, color: primaryColor, size: 18),
+                      child: Icon(
+                        Icons.person_outline_rounded,
+                        color: primaryColor,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Text(
@@ -670,63 +939,78 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ],
                 ),
               ),
-              PopupMenuItem(
-                value: 'update_photo',
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.camera_alt_outlined, color: Colors.blue, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      l10n.updatePhoto,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Admin Panel option - only visible for admins
-              if (_myProfile?['is_admin'] == true)
+              if (_myProfile?['is_admin'] != true) ...[
                 PopupMenuItem(
-                  value: 'admin_panel',
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  value: 'update_photo',
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.purple.withOpacity(0.2), Colors.blue.withOpacity(0.1)],
-                          ),
+                          color: Colors.blue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.purple, size: 18),
+                        child: const Icon(
+                          Icons.camera_alt_outlined,
+                          color: Colors.blue,
+                          size: 18,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        l10n.adminPanel,
+                        l10n.updatePhoto,
                         style: GoogleFonts.inter(
                           fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.purple,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
                     ],
                   ),
                 ),
+                PopupMenuItem(
+                  value: 'update_biodata',
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.description_outlined,
+                          color: Colors.teal,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Update Biodata',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               PopupMenuItem(
                 value: 'logout',
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -735,7 +1019,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         color: Colors.red.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.logout_rounded, color: Colors.red, size: 18),
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        color: Colors.red,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Text(
@@ -761,7 +1049,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return Container(
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[900] : Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
       ),
       child: TabBar(
         controller: _tabController,
@@ -769,7 +1063,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         indicatorWeight: 3,
         labelColor: primaryColor,
         unselectedLabelColor: Colors.grey,
-        labelStyle: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+        labelStyle: GoogleFonts.poppins(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
         tabs: [
           Tab(icon: const Icon(Icons.home_rounded), text: l10n.home),
           Tab(icon: const Icon(Icons.explore_rounded), text: l10n.explore),
@@ -782,7 +1079,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   void _showFilterSheet(bool isDark, Color primaryColor) {
     RangeValues tempAgeRange = _ageRange;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: isDark ? Colors.grey[900] : Colors.white,
@@ -821,11 +1118,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [primaryColor.withOpacity(0.15), primaryColor.withOpacity(0.08)],
+                        colors: [
+                          primaryColor.withOpacity(0.15),
+                          primaryColor.withOpacity(0.08),
+                        ],
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.tune_rounded, color: primaryColor, size: 22),
+                    child: Icon(
+                      Icons.tune_rounded,
+                      color: primaryColor,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -834,11 +1138,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       children: [
                         Text(
                           AppLocalizations.of(context)!.filterProfiles,
-                          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         Text(
                           AppLocalizations.of(context)!.refineByAge,
-                          style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 13),
+                          style: GoogleFonts.poppins(
+                            color: Colors.grey[500],
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
@@ -846,14 +1156,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ],
               ),
               const SizedBox(height: 28),
-              
+
               // Age Range Filter Section
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: isDark ? Colors.grey[850] : Colors.grey[50],
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: (isDark ? Colors.grey[800] : Colors.grey[200])!),
+                  border: Border.all(
+                    color: (isDark ? Colors.grey[800] : Colors.grey[200])!,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -863,11 +1175,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.cake_rounded, size: 18, color: primaryColor),
+                            Icon(
+                              Icons.cake_rounded,
+                              size: 18,
+                              color: primaryColor,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               AppLocalizations.of(context)!.ageRange,
-                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
                             ),
                           ],
                         ),
@@ -890,7 +1209,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       activeColor: primaryColor,
                       inactiveColor: primaryColor.withOpacity(0.2),
                       labels: RangeLabels(
-                        '${tempAgeRange.start.round()}', 
+                        '${tempAgeRange.start.round()}',
                         '${tempAgeRange.end.round()}',
                       ),
                       onChanged: (RangeValues values) {
@@ -902,9 +1221,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Action Buttons
               Row(
                 children: [
@@ -916,12 +1235,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         Navigator.pop(context);
                       },
                       icon: const Icon(Icons.refresh_rounded, size: 18),
-                      label: Text(AppLocalizations.of(context)!.reset, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                      label: Text(
+                        AppLocalizations.of(context)!.reset,
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.grey[700],
                         side: BorderSide(color: Colors.grey[300]!),
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ),
@@ -935,13 +1259,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         Navigator.pop(context);
                       },
                       icon: const Icon(Icons.check_rounded, size: 18),
-                      label: Text(AppLocalizations.of(context)!.applyFilter, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                      label: Text(
+                        AppLocalizations.of(context)!.applyFilter,
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ),
@@ -965,28 +1294,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     Color? color,
   }) {
     final effectiveColor = color ?? primaryColor;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
-          color: isSelected 
+          color: isSelected
               ? effectiveColor.withOpacity(0.15)
-              : isDark ? Colors.grey[800] : Colors.white,
+              : isDark
+              ? Colors.grey[800]
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? effectiveColor : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+            color: isSelected
+                ? effectiveColor
+                : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
             width: isSelected ? 2 : 1,
           ),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: effectiveColor.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ] : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: effectiveColor.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           children: [
@@ -999,7 +1334,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Text(
               label,
               style: GoogleFonts.poppins(
-                color: isSelected ? effectiveColor : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                color: isSelected
+                    ? effectiveColor
+                    : (isDark ? Colors.grey[400] : Colors.grey[700]),
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               ),
@@ -1012,7 +1349,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   color: effectiveColor,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check_rounded, size: 10, color: Colors.white),
+                child: const Icon(
+                  Icons.check_rounded,
+                  size: 10,
+                  color: Colors.white,
+                ),
               ),
           ],
         ),
@@ -1022,7 +1363,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   void _showProfileBottomSheet(bool isDark, Color primaryColor) {
     final age = _calculateAge(_myProfile?['date_of_birth']);
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1084,23 +1425,74 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Basic Info Section
-                    _buildSectionHeader(isDark, AppLocalizations.of(context)!.basicInformation),
+                    _buildSectionHeader(
+                      isDark,
+                      AppLocalizations.of(context)!.basicInformation,
+                    ),
                     const SizedBox(height: 12),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.person_outline, AppLocalizations.of(context)!.gender, _myProfile?['gender'] ?? AppLocalizations.of(context)!.notSet),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.height_rounded, AppLocalizations.of(context)!.height, _myProfile?['height'] ?? AppLocalizations.of(context)!.notSet),
-                    
+                    _buildProfileInfoRow(
+                      isDark,
+                      primaryColor,
+                      Icons.person_outline,
+                      AppLocalizations.of(context)!.gender,
+                      _myProfile?['gender'] ??
+                          AppLocalizations.of(context)!.notSet,
+                    ),
+                    _buildProfileInfoRow(
+                      isDark,
+                      primaryColor,
+                      Icons.height_rounded,
+                      AppLocalizations.of(context)!.height,
+                      _myProfile?['height'] ??
+                          AppLocalizations.of(context)!.notSet,
+                    ),
+
                     // Location & Career Section
-                    _buildSectionHeader(isDark, AppLocalizations.of(context)!.locationCareer),
+                    _buildSectionHeader(
+                      isDark,
+                      AppLocalizations.of(context)!.locationCareer,
+                    ),
                     const SizedBox(height: 12),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.location_on_outlined, AppLocalizations.of(context)!.city, _myProfile?['city'] ?? AppLocalizations.of(context)!.notSet),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.work_outline, AppLocalizations.of(context)!.occupation, _myProfile?['occupation'] ?? AppLocalizations.of(context)!.notSet),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.school_outlined, AppLocalizations.of(context)!.education, _myProfile?['education'] ?? AppLocalizations.of(context)!.notSet),
-                    
+                    _buildProfileInfoRow(
+                      isDark,
+                      primaryColor,
+                      Icons.location_on_outlined,
+                      AppLocalizations.of(context)!.city,
+                      _myProfile?['city'] ??
+                          AppLocalizations.of(context)!.notSet,
+                    ),
+                    _buildProfileInfoRow(
+                      isDark,
+                      primaryColor,
+                      Icons.work_outline,
+                      AppLocalizations.of(context)!.occupation,
+                      _myProfile?['occupation'] ??
+                          AppLocalizations.of(context)!.notSet,
+                    ),
+                    _buildProfileInfoRow(
+                      isDark,
+                      primaryColor,
+                      Icons.school_outlined,
+                      AppLocalizations.of(context)!.education,
+                      _myProfile?['education'] ??
+                          AppLocalizations.of(context)!.notSet,
+                    ),
+
                     // Contact Section
-                    _buildSectionHeader(isDark, AppLocalizations.of(context)!.contact),
+                    _buildSectionHeader(
+                      isDark,
+                      AppLocalizations.of(context)!.contact,
+                    ),
                     const SizedBox(height: 12),
-                    _buildProfileInfoRow(isDark, primaryColor, Icons.phone_outlined, AppLocalizations.of(context)!.phone, _myProfile?['phone_number'] ?? AppLocalizations.of(context)!.notSet),
-                    
+                    _buildProfileInfoRow(
+                      isDark,
+                      primaryColor,
+                      Icons.phone_outlined,
+                      AppLocalizations.of(context)!.phone,
+                      _myProfile?['phone_number'] ??
+                          AppLocalizations.of(context)!.notSet,
+                    ),
+
                     // Edit Button
                     const SizedBox(height: 16),
                     SizedBox(
@@ -1109,7 +1501,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       child: ElevatedButton(
                         onPressed: () async {
                           Navigator.pop(context);
-                          final result = await Navigator.of(context).pushNamed('/edit-profile', arguments: _myProfile ?? {});
+                          final result = await Navigator.of(context).pushNamed(
+                            '/edit-profile',
+                            arguments: _myProfile ?? {},
+                          );
                           if (result == true) {
                             await _initializeData();
                           }
@@ -1118,14 +1513,47 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: Text(
                           AppLocalizations.of(context)!.editProfile,
-                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
+                    if (_myProfile?['is_admin'] != true) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await _confirmAndDeleteOwnProfile();
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: Text(
+                            'Delete Profile',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -1136,7 +1564,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
     );
   }
-  
+
   Widget _buildSectionHeader(bool isDark, String title) {
     return Padding(
       padding: const EdgeInsets.only(top: 16, bottom: 4),
@@ -1152,7 +1580,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildProfileInfoRow(bool isDark, Color primaryColor, IconData icon, String label, String value) {
+  Widget _buildProfileInfoRow(
+    bool isDark,
+    Color primaryColor,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(
@@ -1190,122 +1624,229 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildHomeTab(bool isDark, Color primaryColor) {
     final l10n = AppLocalizations.of(context)!;
+    final isAdmin = _myProfile?['is_admin'] == true;
+    if (isAdmin) {
+      return _buildAdminHomeTab(isDark, primaryColor);
+    }
     final age = _calculateAge(_myProfile?['date_of_birth']);
-    final pendingCount = _receivedInterests.where((i) => i['status'] == 'pending').length;
-    final firstName = _myProfile?['full_name']?.split(' ').first ?? l10n.user;
-    
+    final pendingCount = _receivedInterests
+        .where((i) => i['status'] == 'pending')
+        .length;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Premium Welcome Card with Glassmorphism
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  primaryColor,
-                  primaryColor.withOpacity(0.85),
-                  primaryColor.withOpacity(0.7),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: primaryColor.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+          GestureDetector(
+            onTap: () => _tabController.animateTo(1),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    primaryColor,
+                    primaryColor.withOpacity(0.85),
+                    primaryColor.withOpacity(0.7),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    // Profile Photo with border
-                    Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
-                      ),
-                      child: CircleAvatar(
-                        radius: 32,
-                        backgroundColor: Colors.white.withOpacity(0.2),
-                        backgroundImage: _myProfile?['profile_photo_url'] != null
-                            ? NetworkImage(_myProfile!['profile_photo_url'])
-                            : null,
-                        child: _myProfile?['profile_photo_url'] == null
-                            ? const Icon(Icons.person, size: 32, color: Colors.white)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                _getGreeting(context),
-                                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: primaryColor.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          final l10n = AppLocalizations.of(context)!;
+                          showModalBottomSheet(
+                            context: context,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(18),
                               ),
-                              const SizedBox(width: 6),
-                              Text(_getGreetingEmoji(), style: const TextStyle(fontSize: 16)),
-                            ],
-                          ),
-                          Text(
-                            firstName,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
                             ),
+                            builder: (context) => SafeArea(
+                              child: ListTile(
+                                leading: const Icon(Icons.edit_rounded),
+                                title: Text(l10n.editProfile),
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  final updated = await Navigator.of(context)
+                                      .pushNamed(
+                                        '/edit-profile',
+                                        arguments: _myProfile ?? {},
+                                      );
+                                  if (updated == true) {
+                                    await _initializeData();
+                                  }
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.5),
+                              width: 2,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 30,
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundImage:
+                                _myProfile?['profile_photo_url'] != null
+                                ? NetworkImage(_myProfile!['profile_photo_url'])
+                                : null,
+                            child: _myProfile?['profile_photo_url'] == null
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 30,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '${_getGreeting(context)} ${_getGreetingEmoji()}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: AppLocalizations.of(context)!.editProfile,
+                        onPressed: _myProfile == null
+                            ? null
+                            : () async {
+                                final updated = await Navigator.of(context)
+                                    .pushNamed(
+                                      '/edit-profile',
+                                      arguments: _myProfile ?? {},
+                                    );
+                                if (updated == true) {
+                                  await _initializeData();
+                                }
+                              },
+                        icon: const Icon(
+                          Icons.edit_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white24,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () => _tabController.animateTo(1),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 13,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.travel_explore_rounded,
+                            color: Colors.white,
+                            size: 21,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              l10n.exploreProfiles,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.white70,
+                            size: 14,
                           ),
                         ],
                       ),
                     ),
-                    // Profile completion indicator
-                    GestureDetector(
-                      onTap: () => _showProfileBottomSheet(isDark, primaryColor),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.person_outline_rounded, color: Colors.white, size: 22),
-                      ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 12,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                // Quick info row
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildWelcomeInfoItem(
+                            Icons.location_on_rounded,
+                            _myProfile?['city'] ?? l10n.addCity,
+                          ),
+                        ),
+                        Container(width: 1, height: 26, color: Colors.white24),
+                        Expanded(
+                          child: _buildWelcomeInfoItem(
+                            Icons.work_rounded,
+                            _myProfile?['occupation'] ?? l10n.addJob,
+                          ),
+                        ),
+                        Container(width: 1, height: 26, color: Colors.white24),
+                        Expanded(
+                          child: _buildWelcomeInfoItem(
+                            Icons.cake_rounded,
+                            age > 0 ? l10n.yrs(age) : l10n.addDob,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildWelcomeInfoItem(Icons.location_on_rounded, _myProfile?['city'] ?? l10n.addCity),
-                      Container(width: 1, height: 24, color: Colors.white24),
-                      _buildWelcomeInfoItem(Icons.work_rounded, _myProfile?['occupation'] ?? l10n.addJob),
-                      Container(width: 1, height: 24, color: Colors.white24),
-                      _buildWelcomeInfoItem(Icons.cake_rounded, age > 0 ? l10n.yrs(age) : l10n.addDob),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          
+
           // Pending Interests Alert Banner
           if (pendingCount > 0) ...[
             const SizedBox(height: 16),
@@ -1331,7 +1872,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         color: Colors.amber.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.notifications_active_rounded, color: Colors.amber, size: 22),
+                      child: const Icon(
+                        Icons.notifications_active_rounded,
+                        color: Colors.amber,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1339,25 +1884,40 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            pendingCount == 1 ? l10n.waitingInterest(pendingCount) : l10n.waitingInterests(pendingCount),
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
+                            pendingCount == 1
+                                ? l10n.waitingInterest(pendingCount)
+                                : l10n.waitingInterests(pendingCount),
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
                           ),
                           Text(
                             l10n.tapToViewRespond,
-                            style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12),
+                            style: GoogleFonts.poppins(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.amber,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         l10n.view,
-                        style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -1365,9 +1925,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
           ],
-          
+
           const SizedBox(height: 24),
-          
+
           // Activity Stats Section
           Row(
             children: [
@@ -1375,34 +1935,74 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [primaryColor.withOpacity(0.15), primaryColor.withOpacity(0.08)],
+                    colors: [
+                      primaryColor.withOpacity(0.15),
+                      primaryColor.withOpacity(0.08),
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.analytics_rounded, color: primaryColor, size: 18),
+                child: Icon(
+                  Icons.analytics_rounded,
+                  color: primaryColor,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 10),
               Text(
                 l10n.yourActivity,
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          
+
           // Stat Cards Row
           Row(
             children: [
-              Expanded(child: _buildStatCard(isDark, primaryColor, Icons.favorite_rounded, l10n.saved, _savedProfiles.length.toString(), Colors.pink, () => _tabController.animateTo(2))),
+              Expanded(
+                child: _buildStatCard(
+                  isDark,
+                  primaryColor,
+                  Icons.favorite_rounded,
+                  l10n.saved,
+                  _savedProfiles.length.toString(),
+                  Colors.pink,
+                  () => _tabController.animateTo(2),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _buildStatCard(isDark, primaryColor, Icons.send_rounded, l10n.sent, _sentInterests.length.toString(), Colors.blue, () => _tabController.animateTo(3))),
+              Expanded(
+                child: _buildStatCard(
+                  isDark,
+                  primaryColor,
+                  Icons.send_rounded,
+                  l10n.sent,
+                  _sentInterests.length.toString(),
+                  Colors.blue,
+                  () => _tabController.animateTo(3),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _buildStatCard(isDark, primaryColor, Icons.inbox_rounded, l10n.received, _receivedInterests.length.toString(), Colors.green, () => _tabController.animateTo(3))),
+              Expanded(
+                child: _buildStatCard(
+                  isDark,
+                  primaryColor,
+                  Icons.inbox_rounded,
+                  l10n.received,
+                  _receivedInterests.length.toString(),
+                  Colors.green,
+                  () => _tabController.animateTo(3),
+                ),
+              ),
             ],
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Updates & Success Stories Section
           if (_updates.isNotEmpty) ...[
             Row(
@@ -1411,25 +2011,171 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.green.withOpacity(0.15), Colors.green.withOpacity(0.08)],
+                      colors: [
+                        Colors.green.withOpacity(0.15),
+                        Colors.green.withOpacity(0.08),
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.celebration_rounded, color: Colors.green, size: 18),
+                  child: const Icon(
+                    Icons.celebration_rounded,
+                    color: Colors.green,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Text(
                   l10n.updatesSuccessStories,
-                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            ..._updates.map((update) => _buildUpdateFeedCard(update, isDark, primaryColor)),
+            ..._updates.map(
+              (update) => _buildUpdateFeedCard(update, isDark, primaryColor),
+            ),
           ],
-          
+
           const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAdminHomeTab(bool isDark, Color primaryColor) {
+    final l10n = AppLocalizations.of(context)!;
+    final totalProfiles = _profiles.length;
+    final totalMale = _profiles.where((p) => p['gender'] == 'Male').length;
+    final totalFemale = _profiles.where((p) => p['gender'] == 'Female').length;
+    final pendingCount = _receivedInterests
+        .where((i) => i['status'] == 'pending')
+        .length;
+
+    return RefreshIndicator(
+      onRefresh: _fetchAllData,
+      color: primaryColor,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [primaryColor, primaryColor.withOpacity(0.82)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Admin Dashboard',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Manage profiles, review activity, and control access.',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    isDark,
+                    primaryColor,
+                    Icons.people_rounded,
+                    'Total',
+                    totalProfiles.toString(),
+                    Colors.indigo,
+                    () {
+                      setState(() => _adminExploreGenderFilter = null);
+                      _tabController.animateTo(1);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildStatCard(
+                    isDark,
+                    primaryColor,
+                    Icons.male_rounded,
+                    l10n.male,
+                    totalMale.toString(),
+                    Colors.blue,
+                    () {
+                      setState(() => _adminExploreGenderFilter = 'Male');
+                      _tabController.animateTo(1);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildStatCard(
+                    isDark,
+                    primaryColor,
+                    Icons.female_rounded,
+                    l10n.female,
+                    totalFemale.toString(),
+                    Colors.pink,
+                    () {
+                      setState(() => _adminExploreGenderFilter = 'Female');
+                      _tabController.animateTo(1);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildStatCard(
+              isDark,
+              primaryColor,
+              Icons.mark_email_unread_rounded,
+              'Pending Interests',
+              pendingCount.toString(),
+              Colors.orange,
+              () => _tabController.animateTo(3),
+            ),
+            const SizedBox(height: 18),
+            _buildQuickActionCard(
+              isDark,
+              Icons.manage_accounts_rounded,
+              'Manage Users',
+              'Open all users in admin panel',
+              Colors.teal,
+              () => Navigator.of(context).pushNamed('/admin'),
+            ),
+            _buildQuickActionCard(
+              isDark,
+              Icons.refresh_rounded,
+              'Refresh Data',
+              'Sync latest profiles and interests',
+              Colors.green,
+              () async => await _fetchAllData(),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -1451,20 +2197,81 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildWelcomeInfoItem(IconData icon, String text) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: MainAxisSize.max,
       children: [
         Icon(icon, color: Colors.white70, size: 16),
         const SizedBox(width: 6),
-        Text(
-          text,
-          style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
-          overflow: TextOverflow.ellipsis,
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildStatCard(bool isDark, Color primaryColor, IconData icon, String label, String value, Color color, VoidCallback onTap) {
+  Future<void> _confirmAndDeleteOwnProfile() async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete Profile?'),
+            content: const Text(
+              'This will remove your profile data from the app. This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+
+    if (_supabase.auth.currentUser?.id == null) return;
+
+    try {
+      final response = await _supabase.functions.invoke('delete-own-account');
+      if (response.status != 200) {
+        throw Exception(response.data.toString());
+      }
+      await _supabase.auth.signOut();
+
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not delete profile: $e')));
+      }
+    }
+  }
+
+  Widget _buildStatCard(
+    bool isDark,
+    Color primaryColor,
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1512,19 +2319,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildUpdateFeedCard(Map<String, dynamic> update, bool isDark, Color primaryColor) {
+  Widget _buildUpdateFeedCard(
+    Map<String, dynamic> update,
+    bool isDark,
+    Color primaryColor,
+  ) {
     final l10n = AppLocalizations.of(context)!;
     final type = update['update_type'] ?? 'update';
     final mediaType = update['media_type'] ?? 'none';
-    final createdAt = update['created_at'] != null ? DateTime.parse(update['created_at']) : DateTime.now();
+    final createdAt = update['created_at'] != null
+        ? DateTime.parse(update['created_at'])
+        : DateTime.now();
     final timeAgo = _getTimeAgo(createdAt, context);
-    
+
     Color typeColor;
     IconData typeIcon;
     switch (type) {
-      case 'success_story': typeColor = Colors.green; typeIcon = Icons.favorite_rounded; break;
-      case 'announcement': typeColor = Colors.orange; typeIcon = Icons.campaign_rounded; break;
-      default: typeColor = Colors.blue; typeIcon = Icons.update_rounded;
+      case 'success_story':
+        typeColor = Colors.green;
+        typeIcon = Icons.favorite_rounded;
+        break;
+      case 'announcement':
+        typeColor = Colors.orange;
+        typeIcon = Icons.campaign_rounded;
+        break;
+      default:
+        typeColor = Colors.blue;
+        typeIcon = Icons.update_rounded;
     }
 
     return Container(
@@ -1533,17 +2354,45 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: typeColor.withOpacity(0.2)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (mediaType != 'none' && update['media_url'] != null)
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
               child: mediaType == 'image'
-                  ? Image.network(update['media_url'], height: 180, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(height: 180, color: Colors.grey[300], child: const Icon(Icons.broken_image, size: 40)))
-                  : Container(height: 180, color: Colors.grey[800], child: const Center(child: Icon(Icons.play_circle_outlined, size: 60, color: Colors.white))),
+                  ? Image.network(
+                      update['media_url'],
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 180,
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.broken_image, size: 40),
+                      ),
+                    )
+                  : Container(
+                      height: 180,
+                      color: Colors.grey[800],
+                      child: const Center(
+                        child: Icon(
+                          Icons.play_circle_outlined,
+                          size: 60,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
             ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -1553,26 +2402,66 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: typeColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: typeColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(typeIcon, size: 14, color: typeColor),
                           const SizedBox(width: 4),
-                          Text(type == 'success_story' ? l10n.successStory : type == 'announcement' ? l10n.announcement : l10n.update, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: typeColor)),
+                          Text(
+                            type == 'success_story'
+                                ? l10n.successStory
+                                : type == 'announcement'
+                                ? l10n.announcement
+                                : l10n.update,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: typeColor,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     const Spacer(),
-                    Text(_getTimeAgo(createdAt, context), style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500])),
+                    Text(
+                      _getTimeAgo(createdAt, context),
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(update['title'] ?? '', style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-                if (update['content'] != null && update['content'].toString().isNotEmpty) ...[
+                Text(
+                  update['title'] ?? '',
+                  style: GoogleFonts.poppins(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                if (update['content'] != null &&
+                    update['content'].toString().isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(update['content'], style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600], height: 1.5), maxLines: 3, overflow: TextOverflow.ellipsis),
+                  Text(
+                    update['content'],
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      height: 1.5,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ],
             ),
@@ -1591,7 +2480,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return AppLocalizations.of(context)!.justNow;
   }
 
-  Widget _buildQuickActionCard(bool isDark, IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
+  Widget _buildQuickActionCard(
+    bool isDark,
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1628,8 +2524,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15)),
-                  Text(subtitle, style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 13)),
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[500],
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1639,7 +2547,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.arrow_forward_ios_rounded, color: color, size: 14),
+              child: Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: color,
+                size: 14,
+              ),
             ),
           ],
         ),
@@ -1672,7 +2584,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               style: GoogleFonts.poppins(fontSize: 15),
               decoration: InputDecoration(
                 hintText: l10n.searchHint,
-                hintStyle: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 15),
+                hintStyle: GoogleFonts.poppins(
+                  color: Colors.grey[500],
+                  fontSize: 15,
+                ),
                 prefixIcon: Container(
                   padding: const EdgeInsets.all(12),
                   child: Container(
@@ -1681,12 +2596,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       color: primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.search_rounded, color: primaryColor, size: 20),
+                    child: Icon(
+                      Icons.search_rounded,
+                      color: primaryColor,
+                      size: 20,
+                    ),
                   ),
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.close_rounded, color: Colors.grey[400]),
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: Colors.grey[400],
+                        ),
                         onPressed: () => setState(() => _searchQuery = ''),
                       )
                     : null,
@@ -1696,12 +2618,63 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   borderRadius: BorderRadius.circular(18),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
               ),
             ),
           ),
         ),
         // Header with count
+        if ((_myProfile?['is_admin'] == true) &&
+            _adminExploreGenderFilter != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Filter: $_adminExploreGenderFilter',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    setState(() => _adminExploreGenderFilter = null);
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'Clear',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         if (_filteredProfiles.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -1711,11 +2684,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [primaryColor.withOpacity(0.15), primaryColor.withOpacity(0.08)],
+                      colors: [
+                        primaryColor.withOpacity(0.15),
+                        primaryColor.withOpacity(0.08),
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.people_rounded, color: primaryColor, size: 18),
+                  child: Icon(
+                    Icons.people_rounded,
+                    color: primaryColor,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Column(
@@ -1723,18 +2703,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   children: [
                     Text(
                       l10n.discoverMatches,
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                     ),
                     Text(
-                      _filteredProfiles.length == 1 ? l10n.profileFound(_filteredProfiles.length) : l10n.profilesFound(_filteredProfiles.length),
-                      style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12),
+                      _filteredProfiles.length == 1
+                          ? l10n.profileFound(_filteredProfiles.length)
+                          : l10n.profilesFound(_filteredProfiles.length),
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
                 const Spacer(),
                 if (_searchQuery.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -1742,11 +2733,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.filter_alt_rounded, size: 14, color: primaryColor),
+                        Icon(
+                          Icons.filter_alt_rounded,
+                          size: 14,
+                          color: primaryColor,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           l10n.filtered,
-                          style: GoogleFonts.poppins(fontSize: 12, color: primaryColor, fontWeight: FontWeight.w500),
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -1773,11 +2772,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.search_off_rounded, size: 56, color: primaryColor.withOpacity(0.5)),
+                        child: Icon(
+                          Icons.search_off_rounded,
+                          size: 56,
+                          color: primaryColor.withOpacity(0.5),
+                        ),
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        _searchQuery.isNotEmpty ? l10n.noMatchesFound : l10n.noProfilesAvailable,
+                        _searchQuery.isNotEmpty
+                            ? l10n.noMatchesFound
+                            : l10n.noProfilesAvailable,
                         style: GoogleFonts.poppins(
                           color: isDark ? Colors.white70 : Colors.grey[700],
                           fontSize: 18,
@@ -1789,18 +2794,31 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         _searchQuery.isNotEmpty
                             ? l10n.tryAdjustingSearch
                             : l10n.checkBackLater,
-                        style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
+                        style: GoogleFonts.poppins(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
                       ),
                       if (_searchQuery.isNotEmpty) ...[
                         const SizedBox(height: 20),
                         OutlinedButton.icon(
                           onPressed: () => setState(() => _searchQuery = ''),
                           icon: const Icon(Icons.clear_rounded, size: 18),
-                          label: Text(l10n.clearSearch, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                          label: Text(
+                            l10n.clearSearch,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: primaryColor,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ],
@@ -1813,7 +2831,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _filteredProfiles.length,
-                    itemBuilder: (context, index) => _buildProfileCard(_filteredProfiles[index], isDark, primaryColor),
+                    itemBuilder: (context, index) => _buildProfileCard(
+                      _filteredProfiles[index],
+                      isDark,
+                      primaryColor,
+                    ),
                   ),
                 ),
         ),
@@ -1821,10 +2843,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildProfileCard(Map<String, dynamic> profile, bool isDark, Color primaryColor) {
+  Widget _buildProfileCard(
+    Map<String, dynamic> profile,
+    bool isDark,
+    Color primaryColor,
+  ) {
+    final isAdmin = _myProfile?['is_admin'] == true;
     final profileId = profile['id'] as String;
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final isSelfProfile = profileId == currentUserId;
     final isSaved = _savedProfileIds.contains(profileId);
-    final hasInterest = _sentInterestIds.contains(profileId);
+    final hasInterest = !isSelfProfile && _sentInterestIds.contains(profileId);
     final age = _calculateAge(profile['date_of_birth']);
     final l10n = AppLocalizations.of(context)!;
 
@@ -1853,37 +2882,58 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                     child: profile['profile_photo_url'] != null
-                        ? Image.network(
-                            profile['profile_photo_url'],
+                        ? Container(
                             width: double.infinity,
-                            height: 220,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: double.infinity,
-                              height: 220,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [primaryColor.withOpacity(0.15), primaryColor.withOpacity(0.05)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+                            height: 260,
+                            color: isDark
+                                ? Colors.black.withOpacity(0.35)
+                                : Colors.grey[100],
+                            child: Image.network(
+                              profile['profile_photo_url'],
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: double.infinity,
+                                height: 260,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      primaryColor.withOpacity(0.15),
+                                      primaryColor.withOpacity(0.05),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.person,
+                                  size: 70,
+                                  color: primaryColor.withOpacity(0.4),
                                 ),
                               ),
-                              child: Icon(Icons.person, size: 70, color: primaryColor.withOpacity(0.4)),
                             ),
                           )
                         : Container(
                             width: double.infinity,
-                            height: 220,
+                            height: 260,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [primaryColor.withOpacity(0.15), primaryColor.withOpacity(0.05)],
+                                colors: [
+                                  primaryColor.withOpacity(0.15),
+                                  primaryColor.withOpacity(0.05),
+                                ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                             ),
-                            child: Icon(Icons.person, size: 70, color: primaryColor.withOpacity(0.4)),
+                            child: Icon(
+                              Icons.person,
+                              size: 70,
+                              color: primaryColor.withOpacity(0.4),
+                            ),
                           ),
                   ),
                   // Gradient overlay
@@ -1917,7 +2967,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           profile['full_name'] ?? 'Unknown',
                           style: GoogleFonts.poppins(
                             color: Colors.white,
-                            fontSize: 22,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                           maxLines: 1,
@@ -1926,11 +2976,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         if (age > 0)
                           Row(
                             children: [
-                              const Icon(Icons.cake_rounded, size: 14, color: Colors.white70),
+                              const Icon(
+                                Icons.cake_rounded,
+                                size: 14,
+                                color: Colors.white70,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 l10n.yearsOld(age),
-                                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
                               ),
                             ],
                           ),
@@ -1938,41 +2995,47 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                   ),
                   // Save Button (top right)
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: GestureDetector(
-                      onTap: () async {
-                        await _toggleSaveProfile(profileId);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                          color: isSaved ? Colors.pink : Colors.grey[600],
-                          size: 22,
+                  if (!isSelfProfile)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () async {
+                          await _toggleSaveProfile(profileId);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            isSaved
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: isSaved ? Colors.pink : Colors.grey[600],
+                            size: 22,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   // Interest status badge
                   if (hasInterest)
                     Positioned(
                       top: 12,
                       left: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.green,
                           borderRadius: BorderRadius.circular(20),
@@ -1987,11 +3050,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                            const Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 14,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               l10n.interestSent,
-                              style: GoogleFonts.poppins(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -2010,11 +3081,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       runSpacing: 8,
                       children: [
                         if (profile['city'] != null)
-                          _buildExploreInfoChip(Icons.location_on_rounded, profile['city'], Colors.blue),
+                          _buildExploreInfoChip(
+                            Icons.location_on_rounded,
+                            profile['city'],
+                            Colors.blue,
+                          ),
                         if (profile['occupation'] != null)
-                          _buildExploreInfoChip(Icons.work_rounded, profile['occupation'], Colors.orange),
+                          _buildExploreInfoChip(
+                            Icons.work_rounded,
+                            profile['occupation'],
+                            Colors.orange,
+                          ),
                         if (profile['education'] != null)
-                          _buildExploreInfoChip(Icons.school_rounded, profile['education'], Colors.purple),
+                          _buildExploreInfoChip(
+                            Icons.school_rounded,
+                            profile['education'],
+                            Colors.purple,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -2023,34 +3106,108 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => _showFullProfileSheet(profile, isDark, primaryColor),
-                            icon: const Icon(Icons.visibility_rounded, size: 18),
-                            label: Text(l10n.viewProfile, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                            onPressed: () => _showFullProfileSheet(
+                              profile,
+                              isDark,
+                              primaryColor,
+                            ),
+                            icon: const Icon(
+                              Icons.visibility_rounded,
+                              size: 18,
+                            ),
+                            label: Text(
+                              l10n.viewProfile,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: primaryColor,
-                              side: BorderSide(color: primaryColor.withOpacity(0.5)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: BorderSide(
+                                color: primaryColor.withOpacity(0.5),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: hasInterest ? null : () async {
-                              await _sendInterest(profileId);
-                            },
-                            icon: Icon(hasInterest ? Icons.check_rounded : Icons.favorite_rounded, size: 18),
+                            onPressed: isAdmin
+                                ? () {
+                                    Navigator.of(context).pushNamed(
+                                      '/admin',
+                                      arguments: {
+                                        'searchQuery':
+                                            (profile['login_id'] ??
+                                                    profile['full_name'] ??
+                                                    '')
+                                                .toString(),
+                                        'genderFilter':
+                                            (profile['gender'] == 'Female')
+                                            ? 'Girls'
+                                            : (profile['gender'] == 'Male')
+                                            ? 'Boys'
+                                            : 'All',
+                                      },
+                                    );
+                                  }
+                                : isSelfProfile
+                                ? null
+                                : hasInterest
+                                ? null
+                                : () async {
+                                    await _sendInterest(profileId);
+                                  },
+                            icon: Icon(
+                              isAdmin
+                                  ? Icons.manage_accounts_rounded
+                                  : isSelfProfile
+                                  ? Icons.person_rounded
+                                  : hasInterest
+                                  ? Icons.check_rounded
+                                  : Icons.favorite_rounded,
+                              size: 18,
+                            ),
                             label: Text(
-                              hasInterest ? l10n.sent : l10n.sendInterest,
-                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                              isAdmin
+                                  ? 'Manage User'
+                                  : isSelfProfile
+                                  ? 'Your Profile'
+                                  : hasInterest
+                                  ? l10n.sent
+                                  : l10n.sendInterest,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: hasInterest ? Colors.grey[300] : primaryColor,
-                              foregroundColor: hasInterest ? Colors.grey[600] : Colors.white,
+                              backgroundColor: isAdmin
+                                  ? Colors.teal
+                                  : isSelfProfile
+                                  ? Colors.grey[300]
+                                  : hasInterest
+                                  ? Colors.grey[300]
+                                  : primaryColor,
+                              foregroundColor: isAdmin
+                                  ? Colors.white
+                                  : isSelfProfile
+                                  ? Colors.grey[600]
+                                  : hasInterest
+                                  ? Colors.grey[600]
+                                  : Colors.white,
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
@@ -2082,7 +3239,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           Flexible(
             child: Text(
               text,
-              style: GoogleFonts.poppins(fontSize: 12, color: color, fontWeight: FontWeight.w500),
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -2092,23 +3253,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  void _showFullProfileSheet(Map<String, dynamic> profile, bool isDark, Color primaryColor) {
+  void _showFullProfileSheet(
+    Map<String, dynamic> profile,
+    bool isDark,
+    Color primaryColor,
+  ) {
     final l10n = AppLocalizations.of(context)!;
     final age = _calculateAge(profile['date_of_birth']);
     final profileId = profile['id'] as String;
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final isSelfProfile = profileId == currentUserId;
     final isSaved = _savedProfileIds.contains(profileId);
-    final hasInterest = _sentInterestIds.contains(profileId);
-    
+    final hasInterest = !isSelfProfile && _sentInterestIds.contains(profileId);
+
     // Check for match (either party accepted the other's interest)
     bool isMatch = false;
     // Check if I sent interest that was accepted OR they sent me interest that I accepted
-    final mySentToThem = _sentInterests.where((i) => i['receiver_id'] == profileId).toList();
-    final theirSentToMe = _receivedInterests.where((i) => i['sender_id'] == profileId).toList();
-    
+    final mySentToThem = _sentInterests
+        .where((i) => i['receiver_id'] == profileId)
+        .toList();
+    final theirSentToMe = _receivedInterests
+        .where((i) => i['sender_id'] == profileId)
+        .toList();
+
     final mySentAccepted = mySentToThem.any((i) => i['status'] == 'accepted');
-    final theirSentAccepted = theirSentToMe.any((i) => i['status'] == 'accepted');
+    final theirSentAccepted = theirSentToMe.any(
+      (i) => i['status'] == 'accepted',
+    );
     isMatch = mySentAccepted || theirSentAccepted;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2125,7 +3298,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             return Container(
               decoration: BoxDecoration(
                 color: isDark ? Colors.grey[900] : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
               ),
               child: Stack(
                 children: [
@@ -2154,12 +3329,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 ),
                               ),
                               child: ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(30),
+                                ),
                                 child: profile['profile_photo_url'] != null
                                     ? Image.network(
                                         profile['profile_photo_url'],
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(color: Colors.grey[300]),
+                                        errorBuilder: (_, __, ___) =>
+                                            Container(color: Colors.grey[300]),
                                       )
                                     : Container(color: Colors.grey[300]),
                               ),
@@ -2177,25 +3355,44 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                       color: Colors.white,
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
-                                      shadows: [Shadow(color: Colors.black45, blurRadius: 10)],
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black45,
+                                          blurRadius: 10,
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(color: Colors.white30),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white30,
+                                          ),
                                         ),
                                         child: Row(
                                           children: [
-                                            const Icon(Icons.cake, color: Colors.white, size: 14),
+                                            const Icon(
+                                              Icons.cake,
+                                              color: Colors.white,
+                                              size: 14,
+                                            ),
                                             const SizedBox(width: 6),
                                             Text(
                                               '$age ${l10n.years}',
-                                              style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
+                                              style: GoogleFonts.poppins(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -2203,15 +3400,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                       const SizedBox(width: 10),
                                       if (profile['gender'] != null)
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 4,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: Colors.white.withOpacity(0.2),
-                                            borderRadius: BorderRadius.circular(20),
-                                            border: Border.all(color: Colors.white30),
+                                            color: Colors.white.withOpacity(
+                                              0.2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.white30,
+                                            ),
                                           ),
                                           child: Text(
-                                            profile['gender'], 
-                                            style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
+                                            profile['gender'],
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
                                     ],
@@ -2221,7 +3430,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             ),
                           ],
                         ),
-                        
+
                         Padding(
                           padding: const EdgeInsets.all(24),
                           child: Column(
@@ -2232,38 +3441,72 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 scrollDirection: Axis.horizontal,
                                 child: Row(
                                   children: [
-                                    _buildDetailChip(isDark, Icons.location_on_rounded, profile['city'] ?? 'City', Colors.blue),
+                                    _buildDetailChip(
+                                      isDark,
+                                      Icons.location_on_rounded,
+                                      profile['city'] ?? 'City',
+                                      Colors.blue,
+                                    ),
                                     const SizedBox(width: 12),
-                                    _buildDetailChip(isDark, Icons.work_rounded, profile['occupation'] ?? 'Occupation', Colors.orange),
+                                    _buildDetailChip(
+                                      isDark,
+                                      Icons.work_rounded,
+                                      profile['occupation'] ?? 'Occupation',
+                                      Colors.orange,
+                                    ),
                                     const SizedBox(width: 12),
-                                    _buildDetailChip(isDark, Icons.school_rounded, profile['education'] ?? 'Education', Colors.purple),
+                                    _buildDetailChip(
+                                      isDark,
+                                      Icons.school_rounded,
+                                      profile['education'] ?? 'Education',
+                                      Colors.purple,
+                                    ),
                                   ],
                                 ),
                               ),
                               const SizedBox(height: 30),
-                              
-                              
+
                               // Personal Details Grid (from DB)
-                              Text(l10n.personalDetails, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+                              Text(
+                                l10n.personalDetails,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               const SizedBox(height: 16),
                               Container(
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  color: isDark ? Colors.grey[850] : Colors.grey[50],
+                                  color: isDark
+                                      ? Colors.grey[850]
+                                      : Colors.grey[50],
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Column(
                                   children: [
-                                    if (profile['height'] != null && (profile['height'] as String).isNotEmpty)
-                                      _buildCompactDetailRow(Icons.height_rounded, l10n.height, profile['height']),
-                                    if (profile['height'] != null && (profile['height'] as String).isNotEmpty)
+                                    if (profile['height'] != null &&
+                                        (profile['height'] as String)
+                                            .isNotEmpty)
+                                      _buildCompactDetailRow(
+                                        Icons.height_rounded,
+                                        l10n.height,
+                                        profile['height'],
+                                      ),
+                                    if (profile['height'] != null &&
+                                        (profile['height'] as String)
+                                            .isNotEmpty)
                                       const SizedBox(height: 16),
-                                    if (profile['phone_number'] != null) 
-                                      _buildCompactDetailRow(Icons.phone_rounded, l10n.phone, profile['phone_number']),
+                                    if (profile['phone_number'] != null)
+                                      _buildCompactDetailRow(
+                                        Icons.phone_rounded,
+                                        l10n.phone,
+                                        profile['phone_number'],
+                                      ),
                                   ],
                                 ),
                               ),
-                              
+
                               // Biodata Section
                               if (profile['biodata_url'] != null) ...[
                                 const SizedBox(height: 30),
@@ -2271,10 +3514,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
-                                      colors: [primaryColor.withOpacity(0.1), primaryColor.withOpacity(0.05)],
+                                      colors: [
+                                        primaryColor.withOpacity(0.1),
+                                        primaryColor.withOpacity(0.05),
+                                      ],
                                     ),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: primaryColor.withOpacity(0.2)),
+                                    border: Border.all(
+                                      color: primaryColor.withOpacity(0.2),
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
@@ -2283,31 +3531,71 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                         decoration: BoxDecoration(
                                           color: Colors.white,
                                           shape: BoxShape.circle,
-                                          boxShadow: [BoxShadow(color: primaryColor.withOpacity(0.2), blurRadius: 10)],
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: primaryColor.withOpacity(
+                                                0.2,
+                                              ),
+                                              blurRadius: 10,
+                                            ),
+                                          ],
                                         ),
-                                        child: Icon(Icons.description_rounded, color: primaryColor),
+                                        child: Icon(
+                                          Icons.description_rounded,
+                                          color: primaryColor,
+                                        ),
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Text(l10n.detailedBiodata, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                                            Text(l10n.viewFullFamilyDetails, style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12)),
+                                            Text(
+                                              l10n.detailedBiodata,
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            Text(
+                                              l10n.viewFullFamilyDetails,
+                                              style: GoogleFonts.poppins(
+                                                color: Colors.grey[600],
+                                                fontSize: 12,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
                                       ElevatedButton(
                                         onPressed: () {
                                           Navigator.pop(context);
-                                          _showBiodataViewer(profile['biodata_url'], profile['full_name'] ?? l10n.unknown, primaryColor);
+                                          _showBiodataViewer(
+                                            profile['biodata_url'],
+                                            profile['full_name'] ??
+                                                l10n.unknown,
+                                            primaryColor,
+                                          );
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: primaryColor,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              30,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                          ),
                                         ),
-                                        child: Text(l10n.view, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white)),
+                                        child: Text(
+                                          l10n.view,
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -2320,7 +3608,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ],
                     ),
                   ),
-                  
+
                   // Floating Action Bar
                   Positioned(
                     bottom: 24,
@@ -2332,17 +3620,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         GestureDetector(
                           onTap: () async {
                             await _toggleSaveProfile(profileId);
-                            setSheetState(() {}); // Trigger local rebuild of the bottom sheet
+                            setSheetState(
+                              () {},
+                            ); // Trigger local rebuild of the bottom sheet
                           },
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: isDark ? Colors.grey[800] : Colors.white,
                               shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20)],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 20,
+                                ),
+                              ],
                             ),
                             child: Icon(
-                              isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                              isSaved
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
                               color: isSaved ? Colors.pink : Colors.grey,
                               size: 28,
                             ),
@@ -2358,46 +3655,79 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => ChatScreen(otherUser: profile),
+                                        builder: (context) =>
+                                            ChatScreen(otherUser: profile),
                                       ),
                                     );
                                   },
-                                  icon: const Icon(Icons.chat_bubble_rounded, size: 22),
+                                  icon: const Icon(
+                                    Icons.chat_bubble_rounded,
+                                    size: 22,
+                                  ),
                                   label: Text(
                                     l10n.chatNow,
-                                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                     elevation: 8,
                                     shadowColor: Colors.green.withOpacity(0.4),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
                                   ),
                                 )
                               : ElevatedButton(
-                                  onPressed: hasInterest ? null : () async {
-                                    await _sendInterest(profileId);
-                                    setSheetState(() {});
-                                  },
+                                  onPressed: isSelfProfile
+                                      ? null
+                                      : hasInterest
+                                      ? null
+                                      : () async {
+                                          await _sendInterest(profileId);
+                                          setSheetState(() {});
+                                        },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: primaryColor,
-                                    padding: const EdgeInsets.symmetric(vertical: 18),
+                                    backgroundColor: isSelfProfile
+                                        ? Colors.grey[400]
+                                        : primaryColor,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 18,
+                                    ),
                                     elevation: 8,
-                                    shadowColor: primaryColor.withOpacity(0.4),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                    shadowColor:
+                                        (isSelfProfile
+                                                ? Colors.grey
+                                                : primaryColor)
+                                            .withOpacity(0.4),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
                                   ),
                                   child: Text(
-                                    hasInterest ? l10n.interestSent : l10n.sendInterest,
-                                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+                                    isSelfProfile
+                                        ? 'Your Profile'
+                                        : hasInterest
+                                        ? l10n.interestSent
+                                        : l10n.sendInterest,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                         ),
                       ],
                     ),
                   ),
-                  
+
                   // Close Button
                   Positioned(
                     top: 20,
@@ -2410,11 +3740,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           color: Colors.black.withOpacity(0.3),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.close_rounded, color: Colors.white),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                  
+
                   // Handle (Top Center overlay)
                   Positioned(
                     top: 12,
@@ -2440,7 +3773,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildDetailChip(bool isDark, IconData icon, String label, Color color) {
+  Widget _buildDetailChip(
+    bool isDark,
+    IconData icon,
+    String label,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -2474,8 +3812,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12)),
-              Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15)),
+              Text(
+                label,
+                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
             ],
           ),
         ),
@@ -2483,7 +3830,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value, Color primaryColor) {
+  Widget _buildDetailRow(
+    IconData icon,
+    String label,
+    String value,
+    Color primaryColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -2500,8 +3852,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12)),
-              Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15)),
+              Text(
+                label,
+                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
             ],
           ),
         ],
@@ -2512,12 +3873,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void _showBiodataViewer(String biodataUrl, String name, Color primaryColor) {
     // Detect file type from URL
     final lowerUrl = biodataUrl.toLowerCase();
-    final isImage = lowerUrl.endsWith('.jpg') || 
-                    lowerUrl.endsWith('.jpeg') || 
-                    lowerUrl.endsWith('.png') || 
-                    lowerUrl.endsWith('.gif') || 
-                    lowerUrl.endsWith('.webp');
-    
+    final isImage =
+        lowerUrl.endsWith('.jpg') ||
+        lowerUrl.endsWith('.jpeg') ||
+        lowerUrl.endsWith('.png') ||
+        lowerUrl.endsWith('.gif') ||
+        lowerUrl.endsWith('.webp');
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -2551,7 +3913,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.favorite_rounded, size: 56, color: Colors.pink.withOpacity(0.5)),
+              child: Icon(
+                Icons.favorite_rounded,
+                size: 56,
+                color: Colors.pink.withOpacity(0.5),
+              ),
             ),
             const SizedBox(height: 24),
             Text(
@@ -2572,12 +3938,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ElevatedButton.icon(
               onPressed: () => _tabController.animateTo(1),
               icon: const Icon(Icons.explore_rounded, size: 20),
-              label: Text(l10n.exploreProfiles, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              label: Text(
+                l10n.exploreProfiles,
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ],
@@ -2600,23 +3974,38 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.pink.withOpacity(0.15), Colors.pink.withOpacity(0.08)],
+                      colors: [
+                        Colors.pink.withOpacity(0.15),
+                        Colors.pink.withOpacity(0.08),
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.favorite_rounded, color: Colors.pink, size: 18),
+                  child: const Icon(
+                    Icons.favorite_rounded,
+                    color: Colors.pink,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                        l10n.yourShortlist,
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                      l10n.yourShortlist,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                     ),
                     Text(
-                        _savedProfiles.length == 1 ? l10n.profileSaved(_savedProfiles.length) : l10n.profilesSaved(_savedProfiles.length),
-                      style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12),
+                      _savedProfiles.length == 1
+                          ? l10n.profileSaved(_savedProfiles.length)
+                          : l10n.profilesSaved(_savedProfiles.length),
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -2635,7 +4024,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildSavedProfileCard(Map<String, dynamic> profile, bool isDark, Color primaryColor) {
+  Widget _buildSavedProfileCard(
+    Map<String, dynamic> profile,
+    bool isDark,
+    Color primaryColor,
+  ) {
     final profileId = profile['id'] as String;
     final isSaved = _savedProfileIds.contains(profileId);
     final hasInterest = _sentInterestIds.contains(profileId);
@@ -2667,33 +4060,54 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                     child: profile['profile_photo_url'] != null
-                        ? Image.network(
-                            profile['profile_photo_url'],
+                        ? Container(
                             width: double.infinity,
-                            height: 200,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: double.infinity,
-                              height: 200,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [primaryColor.withOpacity(0.1), primaryColor.withOpacity(0.05)],
+                            height: 240,
+                            color: isDark
+                                ? Colors.black.withOpacity(0.35)
+                                : Colors.grey[100],
+                            child: Image.network(
+                              profile['profile_photo_url'],
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: double.infinity,
+                                height: 240,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      primaryColor.withOpacity(0.1),
+                                      primaryColor.withOpacity(0.05),
+                                    ],
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.person,
+                                  size: 64,
+                                  color: primaryColor.withOpacity(0.4),
                                 ),
                               ),
-                              child: Icon(Icons.person, size: 64, color: primaryColor.withOpacity(0.4)),
                             ),
                           )
                         : Container(
                             width: double.infinity,
-                            height: 200,
+                            height: 240,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [primaryColor.withOpacity(0.1), primaryColor.withOpacity(0.05)],
+                                colors: [
+                                  primaryColor.withOpacity(0.1),
+                                  primaryColor.withOpacity(0.05),
+                                ],
                               ),
                             ),
-                            child: Icon(Icons.person, size: 64, color: primaryColor.withOpacity(0.4)),
+                            child: Icon(
+                              Icons.person,
+                              size: 64,
+                              color: primaryColor.withOpacity(0.4),
+                            ),
                           ),
                   ),
                   // Gradient overlay at bottom
@@ -2738,7 +4152,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ),
                               if (age > 0)
                                 Text(
-                                l10n.yearsOld(age),
+                                  l10n.yearsOld(age),
                                   style: GoogleFonts.poppins(
                                     color: Colors.white70,
                                     fontSize: 14,
@@ -2770,7 +4184,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ],
                         ),
                         child: Icon(
-                          isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                          isSaved
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
                           color: Colors.pink,
                           size: 22,
                         ),
@@ -2790,11 +4206,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       runSpacing: 8,
                       children: [
                         if (profile['city'] != null)
-                          _buildInfoChip(Icons.location_on_rounded, profile['city'], Colors.blue),
+                          _buildInfoChip(
+                            Icons.location_on_rounded,
+                            profile['city'],
+                            Colors.blue,
+                          ),
                         if (profile['occupation'] != null)
-                          _buildInfoChip(Icons.work_rounded, profile['occupation'], Colors.orange),
+                          _buildInfoChip(
+                            Icons.work_rounded,
+                            profile['occupation'],
+                            Colors.orange,
+                          ),
                         if (profile['education'] != null)
-                          _buildInfoChip(Icons.school_rounded, profile['education'], Colors.purple),
+                          _buildInfoChip(
+                            Icons.school_rounded,
+                            profile['education'],
+                            Colors.purple,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -2803,32 +4231,63 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => _showFullProfileSheet(profile, isDark, primaryColor),
-                            icon: const Icon(Icons.visibility_rounded, size: 18),
-                            label: Text(l10n.viewProfile, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                            onPressed: () => _showFullProfileSheet(
+                              profile,
+                              isDark,
+                              primaryColor,
+                            ),
+                            icon: const Icon(
+                              Icons.visibility_rounded,
+                              size: 18,
+                            ),
+                            label: Text(
+                              l10n.viewProfile,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: primaryColor,
-                              side: BorderSide(color: primaryColor.withOpacity(0.5)),
+                              side: BorderSide(
+                                color: primaryColor.withOpacity(0.5),
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: hasInterest ? null : () => _sendInterest(profileId),
-                            icon: Icon(hasInterest ? Icons.check_rounded : Icons.favorite_rounded, size: 18),
+                            onPressed: hasInterest
+                                ? null
+                                : () => _sendInterest(profileId),
+                            icon: Icon(
+                              hasInterest
+                                  ? Icons.check_rounded
+                                  : Icons.favorite_rounded,
+                              size: 18,
+                            ),
                             label: Text(
                               hasInterest ? l10n.sent : l10n.interests,
-                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: hasInterest ? Colors.grey[300] : Colors.pink,
-                              foregroundColor: hasInterest ? Colors.grey[600] : Colors.white,
+                              backgroundColor: hasInterest
+                                  ? Colors.grey[300]
+                                  : Colors.pink,
+                              foregroundColor: hasInterest
+                                  ? Colors.grey[600]
+                                  : Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
@@ -2860,7 +4319,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           Flexible(
             child: Text(
               text,
-              style: GoogleFonts.poppins(fontSize: 12, color: color, fontWeight: FontWeight.w500),
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -2910,9 +4373,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               dividerColor: Colors.transparent,
               labelColor: Colors.white,
-              unselectedLabelColor: isDark ? Colors.grey[400] : Colors.grey[600],
-              labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
-              unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 14),
+              unselectedLabelColor: isDark
+                  ? Colors.grey[400]
+                  : Colors.grey[600],
+              labelStyle: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              unselectedLabelStyle: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
               tabs: [
                 Tab(
                   child: Row(
@@ -2924,14 +4395,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       if (_receivedInterests.isNotEmpty) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
                             '${_receivedInterests.length}',
-                            style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -2948,14 +4425,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       if (_sentInterests.isNotEmpty) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
                             '${_sentInterests.length}',
-                            style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -2978,8 +4461,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-
-
   Widget _buildReceivedInterestsList(bool isDark, Color primaryColor) {
     final l10n = AppLocalizations.of(context)!;
     if (_receivedInterests.isEmpty) {
@@ -3000,7 +4481,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.inbox_rounded, size: 56, color: primaryColor.withOpacity(0.6)),
+              child: Icon(
+                Icons.inbox_rounded,
+                size: 56,
+                color: primaryColor.withOpacity(0.6),
+              ),
             ),
             const SizedBox(height: 24),
             Text(
@@ -3023,8 +4508,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
 
     // Group interests by status
-    final pendingInterests = _receivedInterests.where((i) => i['status'] == 'pending').toList();
-    final otherInterests = _receivedInterests.where((i) => i['status'] != 'pending').toList();
+    final pendingInterests = _receivedInterests
+        .where((i) => i['status'] == 'pending')
+        .toList();
+    final otherInterests = _receivedInterests
+        .where((i) => i['status'] != 'pending')
+        .toList();
 
     return RefreshIndicator(
       onRefresh: _fetchInterests,
@@ -3044,31 +4533,52 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       color: Colors.amber.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.notifications_active_rounded, color: Colors.amber, size: 16),
+                    child: const Icon(
+                      Icons.notifications_active_rounded,
+                      color: Colors.amber,
+                      size: 16,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
                     l10n.awaitingResponse,
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.amber.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       l10n.newCount(pendingInterests.length),
-                      style: GoogleFonts.poppins(color: Colors.amber[700], fontSize: 12, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.poppins(
+                        color: Colors.amber[700],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            ...pendingInterests.map((interest) => _buildReceivedInterestCard(interest, isDark, primaryColor, isPending: true)),
+            ...pendingInterests.map(
+              (interest) => _buildReceivedInterestCard(
+                interest,
+                isDark,
+                primaryColor,
+                isPending: true,
+              ),
+            ),
           ],
-          
+
           // Other interests section
           if (otherInterests.isNotEmpty) ...[
             Padding(
@@ -3081,17 +4591,32 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       color: Colors.grey.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.history_rounded, color: Colors.grey[600], size: 16),
+                    child: Icon(
+                      Icons.history_rounded,
+                      color: Colors.grey[600],
+                      size: 16,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
                     l10n.previousInterests,
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.grey[600]),
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: Colors.grey[600],
+                    ),
                   ),
                 ],
               ),
             ),
-            ...otherInterests.map((interest) => _buildReceivedInterestCard(interest, isDark, primaryColor, isPending: false)),
+            ...otherInterests.map(
+              (interest) => _buildReceivedInterestCard(
+                interest,
+                isDark,
+                primaryColor,
+                isPending: false,
+              ),
+            ),
           ],
           const SizedBox(height: 16),
         ],
@@ -3099,11 +4624,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildReceivedInterestCard(Map<String, dynamic> interest, bool isDark, Color primaryColor, {required bool isPending}) {
+  Widget _buildReceivedInterestCard(
+    Map<String, dynamic> interest,
+    bool isDark,
+    Color primaryColor, {
+    required bool isPending,
+  }) {
     final sender = interest['sender'] as Map<String, dynamic>?;
     if (sender == null) return const SizedBox.shrink();
-    
-    final timeAgo = interest['created_at'] != null 
+
+    final timeAgo = interest['created_at'] != null
         ? _getTimeAgo(DateTime.parse(interest['created_at']), context)
         : '';
     final age = _calculateAge(sender['date_of_birth']);
@@ -3115,13 +4645,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[900] : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isPending 
+        border: isPending
             ? Border.all(color: Colors.amber.withOpacity(0.3), width: 1.5)
             : null,
         boxShadow: [
           BoxShadow(
-            color: isPending 
-                ? Colors.amber.withOpacity(0.08) 
+            color: isPending
+                ? Colors.amber.withOpacity(0.08)
                 : Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 4),
@@ -3166,7 +4696,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 ? NetworkImage(sender['profile_photo_url'])
                                 : null,
                             child: sender['profile_photo_url'] == null
-                                ? Icon(Icons.person, color: primaryColor, size: 28)
+                                ? Icon(
+                                    Icons.person,
+                                    color: primaryColor,
+                                    size: 28,
+                                  )
                                 : null,
                           ),
                         ),
@@ -3179,9 +4713,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               decoration: BoxDecoration(
                                 color: Colors.amber,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: isDark ? Colors.grey[900]! : Colors.white, width: 2),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.grey[900]!
+                                      : Colors.white,
+                                  width: 2,
+                                ),
                               ),
-                              child: const Icon(Icons.priority_high_rounded, color: Colors.white, size: 10),
+                              child: const Icon(
+                                Icons.priority_high_rounded,
+                                color: Colors.white,
+                                size: 10,
+                              ),
                             ),
                           ),
                       ],
@@ -3197,7 +4740,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               Expanded(
                                 child: Text(
                                   sender['full_name'] ?? 'Unknown',
-                                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -3205,7 +4751,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               if (timeAgo.isNotEmpty)
                                 Text(
                                   timeAgo,
-                                  style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 12),
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey[500],
+                                    fontSize: 12,
+                                  ),
                                 ),
                             ],
                           ),
@@ -3213,17 +4762,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           Row(
                             children: [
                               if (age > 0) ...[
-                                Icon(Icons.cake_rounded, size: 13, color: Colors.grey[500]),
+                                Icon(
+                                  Icons.cake_rounded,
+                                  size: 13,
+                                  color: Colors.grey[500],
+                                ),
                                 const SizedBox(width: 4),
-                                Text(l10n.yrs(age), style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13)),
+                                Text(
+                                  l10n.yrs(age),
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey[600],
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 const SizedBox(width: 12),
                               ],
-                              Icon(Icons.location_on_rounded, size: 13, color: Colors.grey[500]),
+                              Icon(
+                                Icons.location_on_rounded,
+                                size: 13,
+                                color: Colors.grey[500],
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   sender['city'] ?? l10n.unknown,
-                                  style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13),
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey[600],
+                                    fontSize: 13,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -3245,15 +4811,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () async {
-                            await _updateInterestStatus(interest['id'], 'declined');
+                            await _updateInterestStatus(
+                              interest['id'],
+                              'declined',
+                            );
                           },
                           icon: const Icon(Icons.close_rounded, size: 18),
-                          label: Text(l10n.decline, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                          label: Text(
+                            l10n.decline,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.grey[700],
                             side: BorderSide(color: Colors.grey[300]!),
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -3262,16 +4838,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         flex: 2,
                         child: ElevatedButton.icon(
                           onPressed: () async {
-                            await _updateInterestStatus(interest['id'], 'accepted');
+                            await _updateInterestStatus(
+                              interest['id'],
+                              'accepted',
+                            );
                           },
                           icon: const Icon(Icons.favorite_rounded, size: 18),
-                          label: Text(l10n.acceptInterest, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                          label: Text(
+                            l10n.acceptInterest,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -3306,7 +4892,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.send_rounded, size: 56, color: Colors.blue.withOpacity(0.6)),
+              child: Icon(
+                Icons.send_rounded,
+                size: 56,
+                color: Colors.blue.withOpacity(0.6),
+              ),
             ),
             const SizedBox(height: 24),
             Text(
@@ -3327,12 +4917,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ElevatedButton.icon(
               onPressed: () => _tabController.animateTo(1),
               icon: const Icon(Icons.explore_rounded, size: 20),
-              label: Text(l10n.exploreProfiles, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              label: Text(
+                l10n.exploreProfiles,
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ],
@@ -3341,9 +4939,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
 
     // Group by status
-    final pendingInterests = _sentInterests.where((i) => i['status'] == 'pending').toList();
-    final acceptedInterests = _sentInterests.where((i) => i['status'] == 'accepted').toList();
-    final declinedInterests = _sentInterests.where((i) => i['status'] == 'declined').toList();
+    final pendingInterests = _sentInterests
+        .where((i) => i['status'] == 'pending')
+        .toList();
+    final acceptedInterests = _sentInterests
+        .where((i) => i['status'] == 'accepted')
+        .toList();
+    final declinedInterests = _sentInterests
+        .where((i) => i['status'] == 'declined')
+        .toList();
 
     return RefreshIndicator(
       onRefresh: _fetchInterests,
@@ -3359,9 +4963,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               count: acceptedInterests.length,
               color: Colors.green,
             ),
-            ...acceptedInterests.map((interest) => _buildSentInterestCard(interest, isDark, primaryColor)),
+            ...acceptedInterests.map(
+              (interest) =>
+                  _buildSentInterestCard(interest, isDark, primaryColor),
+            ),
           ],
-          
+
           // Pending interests
           if (pendingInterests.isNotEmpty) ...[
             _buildInterestSectionHeader(
@@ -3370,9 +4977,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               count: pendingInterests.length,
               color: Colors.amber,
             ),
-            ...pendingInterests.map((interest) => _buildSentInterestCard(interest, isDark, primaryColor)),
+            ...pendingInterests.map(
+              (interest) =>
+                  _buildSentInterestCard(interest, isDark, primaryColor),
+            ),
           ],
-          
+
           // Declined interests
           if (declinedInterests.isNotEmpty) ...[
             _buildInterestSectionHeader(
@@ -3381,7 +4991,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               count: declinedInterests.length,
               color: Colors.grey,
             ),
-            ...declinedInterests.map((interest) => _buildSentInterestCard(interest, isDark, primaryColor)),
+            ...declinedInterests.map(
+              (interest) =>
+                  _buildSentInterestCard(interest, isDark, primaryColor),
+            ),
           ],
           const SizedBox(height: 16),
         ],
@@ -3410,7 +5023,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const SizedBox(width: 10),
           Text(
             title,
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
           ),
           const Spacer(),
           Container(
@@ -3421,7 +5037,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             child: Text(
               '$count',
-              style: GoogleFonts.poppins(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+              style: GoogleFonts.poppins(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -3429,11 +5049,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildSentInterestCard(Map<String, dynamic> interest, bool isDark, Color primaryColor) {
+  Widget _buildSentInterestCard(
+    Map<String, dynamic> interest,
+    bool isDark,
+    Color primaryColor,
+  ) {
     final receiver = interest['receiver'] as Map<String, dynamic>?;
     if (receiver == null) return const SizedBox.shrink();
-    
-    final timeAgo = interest['created_at'] != null 
+
+    final timeAgo = interest['created_at'] != null
         ? _getTimeAgo(DateTime.parse(interest['created_at']), context)
         : '';
     final age = _calculateAge(receiver['date_of_birth']);
@@ -3446,13 +5070,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[900] : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isAccepted 
+        border: isAccepted
             ? Border.all(color: Colors.green.withOpacity(0.3), width: 1.5)
             : null,
         boxShadow: [
           BoxShadow(
-            color: isAccepted 
-                ? Colors.green.withOpacity(0.08) 
+            color: isAccepted
+                ? Colors.green.withOpacity(0.08)
                 : Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 4),
@@ -3476,13 +5100,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
                           colors: [
-                            (isAccepted ? Colors.green : primaryColor).withOpacity(0.2),
-                            (isAccepted ? Colors.green : primaryColor).withOpacity(0.1),
+                            (isAccepted ? Colors.green : primaryColor)
+                                .withOpacity(0.2),
+                            (isAccepted ? Colors.green : primaryColor)
+                                .withOpacity(0.1),
                           ],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: (isAccepted ? Colors.green : primaryColor).withOpacity(0.15),
+                            color: (isAccepted ? Colors.green : primaryColor)
+                                .withOpacity(0.15),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -3507,9 +5134,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         decoration: BoxDecoration(
                           color: _getStatusColor(status),
                           shape: BoxShape.circle,
-                          border: Border.all(color: isDark ? Colors.grey[900]! : Colors.white, width: 2),
+                          border: Border.all(
+                            color: isDark ? Colors.grey[900]! : Colors.white,
+                            width: 2,
+                          ),
                         ),
-                        child: Icon(_getStatusIcon(status), color: Colors.white, size: 10),
+                        child: Icon(
+                          _getStatusIcon(status),
+                          color: Colors.white,
+                          size: 10,
+                        ),
                       ),
                     ),
                   ],
@@ -3525,7 +5159,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           Expanded(
                             child: Text(
                               receiver['full_name'] ?? 'Unknown',
-                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -3533,7 +5170,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           if (timeAgo.isNotEmpty)
                             Text(
                               timeAgo,
-                              style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 12),
+                              style: GoogleFonts.poppins(
+                                color: Colors.grey[500],
+                                fontSize: 12,
+                              ),
                             ),
                         ],
                       ),
@@ -3541,17 +5181,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       Row(
                         children: [
                           if (age > 0) ...[
-                            Icon(Icons.cake_rounded, size: 13, color: Colors.grey[500]),
+                            Icon(
+                              Icons.cake_rounded,
+                              size: 13,
+                              color: Colors.grey[500],
+                            ),
                             const SizedBox(width: 4),
-                            Text(l10n.yrs(age), style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13)),
+                            Text(
+                              l10n.yrs(age),
+                              style: GoogleFonts.poppins(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
+                            ),
                             const SizedBox(width: 12),
                           ],
-                          Icon(Icons.location_on_rounded, size: 13, color: Colors.grey[500]),
+                          Icon(
+                            Icons.location_on_rounded,
+                            size: 13,
+                            color: Colors.grey[500],
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               receiver['city'] ?? l10n.unknown,
-                              style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13),
+                              style: GoogleFonts.poppins(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -3570,7 +5227,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     color: primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.arrow_forward_ios_rounded, color: primaryColor, size: 14),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: primaryColor,
+                    size: 14,
+                  ),
                 ),
               ],
             ),
@@ -3607,7 +5268,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     IconData icon;
     String label;
     final l10n = AppLocalizations.of(context)!;
-    
+
     switch (status) {
       case 'accepted':
         color = Colors.green;
@@ -3643,7 +5304,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const SizedBox(width: 5),
           Text(
             label,
-            style: GoogleFonts.poppins(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+            style: GoogleFonts.poppins(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -3671,30 +5336,67 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const SizedBox(height: 16),
           Text(
             _myProfile?['full_name'] ?? l10n.user,
-            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold),
+            style: GoogleFonts.poppins(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           if (age > 0)
-            Text(l10n.yearsOld(age), style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16)),
+            Text(
+              l10n.yearsOld(age),
+              style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16),
+            ),
           const SizedBox(height: 32),
-          _buildProfileInfoCard(isDark, primaryColor, Icons.location_on_rounded, l10n.city, _myProfile?['city'] ?? l10n.notSet),
-          _buildProfileInfoCard(isDark, primaryColor, Icons.work_rounded, l10n.occupation, _myProfile?['occupation'] ?? l10n.notSet),
-          _buildProfileInfoCard(isDark, primaryColor, Icons.school_rounded, l10n.education, _myProfile?['education'] ?? l10n.notSet),
-          _buildProfileInfoCard(isDark, primaryColor, Icons.person_rounded, l10n.gender, _myProfile?['gender'] ?? l10n.notSet),
+          _buildProfileInfoCard(
+            isDark,
+            primaryColor,
+            Icons.location_on_rounded,
+            l10n.city,
+            _myProfile?['city'] ?? l10n.notSet,
+          ),
+          _buildProfileInfoCard(
+            isDark,
+            primaryColor,
+            Icons.work_rounded,
+            l10n.occupation,
+            _myProfile?['occupation'] ?? l10n.notSet,
+          ),
+          _buildProfileInfoCard(
+            isDark,
+            primaryColor,
+            Icons.school_rounded,
+            l10n.education,
+            _myProfile?['education'] ?? l10n.notSet,
+          ),
+          _buildProfileInfoCard(
+            isDark,
+            primaryColor,
+            Icons.person_rounded,
+            l10n.gender,
+            _myProfile?['gender'] ?? l10n.notSet,
+          ),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () async {
-                final result = await Navigator.of(context).pushNamed('/edit-profile', arguments: _myProfile ?? {});
+                final result = await Navigator.of(
+                  context,
+                ).pushNamed('/edit-profile', arguments: _myProfile ?? {});
                 if (result == true) {
                   await _initializeData();
                 }
               },
               icon: const Icon(Icons.edit_rounded),
-              label: Text(l10n.editProfile, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              label: Text(
+                l10n.editProfile,
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ),
@@ -3703,14 +5405,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildProfileInfoCard(bool isDark, Color primaryColor, IconData icon, String label, String value) {
+  Widget _buildProfileInfoCard(
+    bool isDark,
+    Color primaryColor,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[900] : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10),
+        ],
       ),
       child: Row(
         children: [
@@ -3726,8 +5436,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12)),
-              Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15)),
+              Text(
+                label,
+                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
             ],
           ),
         ],
@@ -3768,8 +5487,9 @@ class _BiodataViewerScreenState extends State<_BiodataViewerScreen> {
 
   void _initWebView() {
     // Use Google Docs Viewer to display PDFs and documents in-app
-    final googleDocsUrl = 'https://docs.google.com/gview?embedded=true&url=${Uri.encodeComponent(widget.biodataUrl)}';
-    
+    final googleDocsUrl =
+        'https://docs.google.com/gview?embedded=true&url=${Uri.encodeComponent(widget.biodataUrl)}';
+
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
@@ -3820,12 +5540,13 @@ class _BiodataViewerScreenState extends State<_BiodataViewerScreen> {
                 color: widget.primaryColor,
                 value: loadingProgress.expectedTotalBytes != null
                     ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
+                          loadingProgress.expectedTotalBytes!
                     : null,
               ),
             );
           },
-          errorBuilder: (context, error, stackTrace) => _buildErrorWidget(context),
+          errorBuilder: (context, error, stackTrace) =>
+              _buildErrorWidget(context),
         ),
       ),
     );
@@ -3835,7 +5556,7 @@ class _BiodataViewerScreenState extends State<_BiodataViewerScreen> {
     if (_webViewController == null) {
       return _buildErrorWidget(context);
     }
-    
+
     return Stack(
       children: [
         WebViewWidget(controller: _webViewController!),
